@@ -1,7 +1,7 @@
 <?php
 /* SITS Integration Block
  *
- * Copyright (C) 2011 onwards Alex Lydiate
+ * Copyright (C) 2011 University of Bath
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
