@@ -6,9 +6,9 @@
 
 2) Edit the file <>/blocks/sits/config/sits_config.php to configure the block with your SITS database user, password and host address.
 
-3)  On the Moodle homepage click 'Notifications' - Moodle will then install the block.
+3) On the Moodle homepage click 'Notifications' - Moodle will then install the block.
 
-**Be Aware That**
+**Be Aware**
 
 The module is currently in a testing phase at the University of Bath - we are due to go live in early August, in time for the new academic year.
 
