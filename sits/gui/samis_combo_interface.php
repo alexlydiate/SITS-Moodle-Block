@@ -37,7 +37,7 @@ include('./samis_head.php');?>
 	alt="University of Bath" /> </a></div>
 </div>
 <div id="header" class=" clearfix">
-<h1 class="headermain">Manage SAMIS Cohorts and Groups</h1>
+<h1 class="headermain"><?php print get_string('manage_cohorts_and_groups', 'block_sits')?></h1>
 </div>
 <div id="outertab"><!-- <div class="samis_notice">
 					This tool is for mapping SAMIS student cohorts to Moodle courses, and creating Moodle groups from SAMIS cohorts. Before creating groups you must first map the relevant cohorts. To sync an individual course with SAMIS, press the 'Sync Course' button for that course.  All courses are automatically synced overnight.
