@@ -2,9 +2,9 @@
 
 **Installation**
 
-1) Copy the directory 'sits' into <>/blocks/
+1) Copy the directory 'sits' into <moodle_root>/blocks/
 
-2) Edit the file <>/blocks/sits/config/sits_config.php to configure the block with your SITS database user, password and host address.
+2) Edit the file <moodle_root>/blocks/sits/config/sits_config.php to configure the block with your SITS database user, password and host address.
 
 3) On the Moodle homepage click 'Notifications' - Moodle will then install the block.
 
