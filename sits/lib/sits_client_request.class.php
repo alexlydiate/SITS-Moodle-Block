@@ -257,8 +257,6 @@ EOXML;
                 $mapping = $this->sits_sync->read_mapping_from_id((integer)$mappingXML['id']);
                 if(!is_object($mapping)){
                     $returnXMLObj->addChild('error', 'Failed to read mapping ' . $mappingXML['id']);
-                }elseif(!$mapping->active){
-                    $returnXMLObj->addChild('error', 'Could not update mapping ' . $mappingXML['id'] . ' as it has been removed by another user during your session');
                 }else{
                     $this->process_batch_element($mapping, $mappingXML, $returnXMLObj);
                 }
@@ -476,7 +474,9 @@ EOXML;
         $mappings = $this->sits_sync->read_mappings_for_course($this->xml->course_id);
         if(is_array($mappings)){
             foreach($mappings as $mapping){
-                $returnXML .= '<id>' . $mapping->id . '</id>';
+                if($mapping->active){
+                    $returnXML .= '<id>' . $mapping->id . '</id>';
+                }
             }
         }
         $returnXML .= '</maps>';

@@ -1,6 +1,8 @@
 <?PHP // $Id: index.php,v 1.194.2.24 2010/06/17 21:02:36 mudrd8mz Exp $
 
-//  Lists all the users within a given course
+// Lists all the users within a given course along with relevant mapping info
+// A big old hatchet job of the normal Moodle participants script, to be thoroughly reviewed
+
 global $CFG, $USER, $COURSE;
 
 require_once('../../../../config.php');
@@ -179,7 +181,7 @@ if (has_capability('moodle/course:viewhiddenuserfields', $context)) {
     $hiddenfields = array_flip(explode(',', $CFG->hiddenuserfields));
 }
 
-if (isset($hiddenfields['lastaccess'])) {
+if (isset($hiddenfields['unenrol_date'])) {
     // do not allow access since filtering
     $accesssince = 0;
 }
@@ -208,104 +210,27 @@ echo '<td class="left">';
 groups_print_course_menu($course, $baseurl);
 echo '</td>';
 
-/*if (!isset($hiddenfields['lastaccess'])) {
- // get minimum lastaccess for this course and display a dropbox to filter by lastaccess going back this far.
- // we need to make it diferently for normal courses and site course
- if ($context->id != $frontpagectx->id) {
- $minlastaccess = get_field_sql('SELECT min(timeaccess)
- FROM '.$CFG->prefix.'user_lastaccess
- WHERE courseid = '.$course->id.'
- AND timeaccess != 0');
- $lastaccess0exists = record_exists('user_lastaccess', 'courseid', $course->id, 'timeaccess', 0);
- } else {
- $minlastaccess = get_field_sql('SELECT min(lastaccess)
- FROM '.$CFG->prefix.'user
- WHERE lastaccess != 0');
- $lastaccess0exists = record_exists('user','lastaccess',0);
- }
-
- $now = usergetmidnight(time());
- $timeaccess = array();
-
- // makes sense for this to go first.
- $timeoptions[0] = get_string('selectperiod');
-
- // days
- for ($i = 1; $i < 7; $i++) {
- if (strtotime('-'.$i.' days',$now) >= $minlastaccess) {
- $timeoptions[strtotime('-'.$i.' days',$now)] = get_string('numdays','moodle',$i);
- }
- }
- // weeks
- for ($i = 1; $i < 10; $i++) {
- if (strtotime('-'.$i.' weeks',$now) >= $minlastaccess) {
- $timeoptions[strtotime('-'.$i.' weeks',$now)] = get_string('numweeks','moodle',$i);
- }
- }
- // months
- for ($i = 2; $i < 12; $i++) {
- if (strtotime('-'.$i.' months',$now) >= $minlastaccess) {
- $timeoptions[strtotime('-'.$i.' months',$now)] = get_string('nummonths','moodle',$i);
- }
- }
- // try a year
- if (strtotime('-1 year',$now) >= $minlastaccess) {
- $timeoptions[strtotime('-1 year',$now)] = get_string('lastyear');
- }
-
- if (!empty($lastaccess0exists)) {
- $timeoptions[-1] = get_string('never');
- }
-
- if (count($timeoptions) > 1) {
- echo '<td class="left">';
- $baseurl = preg_replace('/&amp;accesssince='.$accesssince.'/','',$baseurl);
- popup_form($baseurl.'&amp;accesssince=',$timeoptions,'timeoptions',$accesssince, '', '', '', false, 'self', get_string('usersnoaccesssince'));
- echo '</td>';
- }
- }
-
-
- echo '<td class="right">';
- $formatmenu = array( '0' => get_string('detailedless'),
- '1' => get_string('detailedmore'));
- popup_form($baseurl.'&amp;mode=', $formatmenu, 'formatmenu', $fullmode, '', '', '', false, 'self', get_string('userlist'));
- echo '</td></tr></table>';
-
- if ($currentgroup and (!$isseparategroups or has_capability('moodle/site:accessallgroups', $context))) {    /// Display info about the group
- if ($group = groups_get_group($currentgroup)) {
- if (!empty($group->description) or (!empty($group->picture) and empty($group->hidepicture))) {
- echo '<table class="groupinfobox"><tr><td class="left side picture">';
- print_group_picture($group, $course->id, true, false, false);
- echo '</td><td class="content">';
- echo '<h3>'.$group->name;
- if (has_capability('moodle/course:managegroups', $context)) {
- echo '&nbsp;<a title="'.get_string('editgroupprofile').'" href="'.$CFG->wwwroot.'/group/group.php?id='.$group->id.'&amp;courseid='.$group->courseid.'">';
- echo '<img src="'.$CFG->pixpath.'/t/edit.gif" alt="'.get_string('editgroupprofile').'" />';
- echo '</a>';
- }
- echo '</h3>';
- echo format_text($group->description);
- echo '</td></tr></table>';
- }
- }
- }*/
 
 /// Define a table showing a list of users in the current role selection
 
 $tablecolumns = array('userpic', 'fullname');
 $tableheaders = array(get_string('userpic'), get_string('fullname'));
-if (!isset($hiddenfields['city'])) {
-    $tablecolumns[] = 'city';
-    $tableheaders[] = 'Mapping';
+if (!isset($hiddenfields['mapped_cohort'])) {
+    $tablecolumns[] = 'mapped_cohort';
+    $tableheaders[] = 'Mapped Cohort';
 }
 
-if (!isset($hiddenfields['country'])) {
-    $tablecolumns[] = 'country';
+if (!isset($hiddenfields['unenrol_type'])) {
+    $tablecolumns[] = 'unenrol_type';
+    $tableheaders[] = 'Unenrol Type';
+}
+
+if (!isset($hiddenfields['default_map'])) {
+    $tablecolumns[] = 'default_map';
     $tableheaders[] = 'Default';
 }
 
-if (!isset($hiddenfields['lastaccess'])) {
+if (!isset($hiddenfields['unenrol_date'])) {
     $tablecolumns[] = 'lastaccess';
     $tableheaders[] = 'Unenrol Date';
 }
@@ -325,10 +250,6 @@ $table = new flexible_table('user-index-participants-'.$course->id);
 $table->define_columns($tablecolumns);
 $table->define_headers($tableheaders);
 $table->define_baseurl($baseurl);
-
-/*if (!isset($hiddenfields['lastaccess'])) {
- //$table->sortable(true, 'lastaccess', SORT_DESC);
- }*/
 
 $table->set_attribute('cellspacing', '0');
 $table->set_attribute('id', 'participants');
@@ -361,6 +282,7 @@ if ($context->id != $frontpagectx->id) {
     $select = 'SELECT DISTINCT u.id, u.username, u.firstname, u.lastname,
                       u.email, r.enrol, u.country, u.picture,
                       u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt, m.end_date, m.default_map,
+                      m.sits_code, m.acyear, m.period_code, m.specified, m.manual,
                       COALESCE(ul.timeaccess, 0) AS lastaccess,
                       r.hidden,
                       ctx.id AS ctxid, ctx.path AS ctxpath,
@@ -371,6 +293,7 @@ if ($context->id != $frontpagectx->id) {
         $select = 'SELECT u.id, u.username, u.firstname, u.lastname,
                           u.email, r.enrol, u.country, u.picture,
                           u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt, m.end_date, m.default_map,
+                          m.sits_code, m.acyear, m.period_code, m.specified, m.manual,
                           u.lastaccess, r.hidden,
                           ctx.id AS ctxid, ctx.path AS ctxpath,
                           ctx.depth AS ctxdepth, ctx.contextlevel AS ctxlevel ';
@@ -378,6 +301,7 @@ if ($context->id != $frontpagectx->id) {
         $select = 'SELECT u.id, u.username, u.firstname, u.lastname,
                           u.email, r.enrol, u.country, u.picture,
                           u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt, m.end_date, m.default_map,
+                          m.sits_code, m.acyear, m.period_code, m.specified, m.manual,
                           u.lastaccess,
                           ctx.id AS ctxid, ctx.path AS ctxpath,
                           ctx.depth AS ctxdepth, ctx.contextlevel AS ctxlevel ';
@@ -464,12 +388,12 @@ if ($table->get_sql_where()) {
 if ($table->get_sql_sort()) {
     $sort = ' ORDER BY '.$table->get_sql_sort();
     if ($context->id != $frontpagectx->id or $roleid >= 0) {
-        $sort .= ', r.hidden DESC';
+        $sort .= ', r.enrol ASC';
     }
 } else {
     $sort = '';
     if ($context->id != $frontpagectx->id or $roleid >= 0) {
-        $sort .= ' ORDER BY r.hidden DESC';
+        $sort .= ' ORDER BY r.enrol ASC';
     }
 }
 
@@ -491,31 +415,6 @@ if ($context->id == $frontpagectx->id) {
     }
     $rolenames = array(-1 => $strallsiteusers) + $rolenames;
 }
-
-/// If there are multiple Roles in the course, then show a drop down menu for switching
-/*if (count($rolenames) > 1) {
- echo '<div class="rolesform">';
- echo '<label for="rolesform_jump">'.get_string('currentrole', 'role').'&nbsp;</label>';
- if ($context->id != $frontpagectx->id) {
- $rolenames = array(0 => get_string('all')) + $rolenames;
- } else {
- if (!$CFG->defaultfrontpageroleid) {
- // we do not want "All users with role" - we already have all users in defualt frontpage role option
- $rolenames = array(0 => get_string('userswithrole', 'role')) + $rolenames;
- }
- }
- popup_form("$CFG->wwwroot/blocks/sits/gui/views/participants.php?contextid=$context->id&amp;sifirst=&amp;silast=&amp;roleid=", $rolenames,
- 'rolesform', $roleid, '');
- echo '</div>';
-
- } else if (count($rolenames) == 1) {
- // when all users with the same role - print its name
- echo '<div class="rolesform">';
- echo get_string('role').': ';
- $rolename = reset($rolenames);
- echo $rolename;
- echo '</div>';
- }*/
 
 if ($roleid > 0) {
     if (!$currentrole = get_record('role','id',$roleid)) {
@@ -732,19 +631,40 @@ if ($fullmode) {    // Print simple listing
             print_user_picture($user, $course->id, $user->picture, false, true, $piclink),
             $profilelink . $hidden);
 
-            if (!isset($hiddenfields['city'])) {
-                $data[] = $user->enrol;
+            if (!isset($hiddenfields['mapped_cohort'])) {
+                if($user->enrol == 'manual'){
+                    $data[] = get_string('enrol_not_linked', 'block_sits');
+                }else{
+                    $data[] = $user->sits_code . ', ' . $user->acyear . ', ' . $user->period_code;
+                }
             }
-            if (!isset($hiddenfields['country'])) {
-                if($user->default_map){
+            if (!isset($hiddenfields['unenrol_type'])) {
+                if($user->enrol == 'manual'){
+                    $data[] = 'N/A';
+                }elseif($user->specified){
+                    $data[] = 'Specified';
+                }elseif($user->manual){
+                    $data[] = 'Manual';
+                }else{
+                    $data[] = 'Automatic';
+                }
+            }
+            if (!isset($hiddenfields['default_map'])) {
+                if($user->enrol == 'manual'){
+                    $data[] = 'N/A';
+                }elseif($user->default_map){
                     $data[] = 'Yes';
                 }else{
                     $data[] = 'No';
                 }
             }
-            if (!isset($hiddenfields['lastaccess'])) {
-                $date = new DateTime($user->end_date);
-                $data[] = $date->format('d-m-Y');
+            if (!isset($hiddenfields['unenrol_date'])) {
+                if(is_null($user->end_date) || $user->end_date == '1970-01-01 00:00:00'){
+                    $data[] = 'N/A';
+                }else{
+                    $date = new DateTime($user->end_date);
+                    $data[] = $date->format('d-m-Y');
+                }
             }
             if ($course->enrolperiod) {
                 if ($user->timeend) {

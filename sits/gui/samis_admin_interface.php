@@ -39,7 +39,7 @@ if(has_capability('moodle/course:update', $context))
 <h1 class="headermain"><?php print get_string('admin_interface','block_sits')?></h1>
 </div><br/>
 <p>This is where the interface to alter period slot start and end dates will be, perhaps amongst other things.</p>
-<p>If you're wondering where the Sync All Courses button went, we've now got the cron doing that, so I deemed it unecessary.</p>
+<p>If you're wondering where the Sync All Courses button went, I've now got the cron doing that, so I deemed it unnecessary.</p>
 
 </body>
 </html> 
