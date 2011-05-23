@@ -392,7 +392,7 @@ function get_unenrolment_types(mapping)
     return types_html;
 }
 
-function appendMappingToPage(mapping){
+function appendMappingToPage(mapping, newMap){
 	
 	var html, yeargroup, periodcode;	
 	var sitscode = mapping.getElementsByTagName("sits_code")[0].firstChild.data;
@@ -413,6 +413,9 @@ function appendMappingToPage(mapping){
 	var day_options = get_days(date);
 	var unenrol_type = get_unenrolment_types(mapping);	
 	html = '<p class="course_detail" id="id_' + id + '">';
+	if(newMap === true){
+		html += '<strong class="mpg_category">NEWLY ADDED: </strong>';
+	}
 	html += '<span class="mpg_category">SAMIS Code: </span>';
 	html += '<strong class="mpg_category">' + sitscode + '</strong>';
 	html += '<span class="mpg_category"> Academic Year: </span><strong class="mpg_category">' + acyear + '</strong>';
@@ -445,10 +448,14 @@ function appendMappingToPage(mapping){
 	html += '</span>';
 	html += '</p>';
 	var mapDiv = document.createElement('div');
-	if(isEven(appendCount[course_id])){
-		mapDiv.style.cssText = 'background-color: #DFDFDF;';
+	if(newMap === true){
+		mapDiv.style.cssText = 'background-color: #BAD897;';
 	}else{
-		mapDiv.style.cssText = 'background-color: #EFEFEF;';
+		if(isEven(appendCount[course_id])){
+			mapDiv.style.cssText = 'background-color: #DFDFDF;';
+		}else{
+			mapDiv.style.cssText = 'background-color: #EFEFEF;';
+		}
 	}
 	mapDiv.innerHTML = html;
 	mapDiv.id = 'id_' + id + '_map';
@@ -472,12 +479,20 @@ function appendNoMapsToCourseDiv(courseid){
 	html += 'No current mappings exist for this course.';
 	html +='</p>';
 	noMapDiv.innerHTML = html;
+	noMapDiv.id = 'id_' + courseid + '_no_maps';
 	var element = YAHOO.util.Dom.get('id_' + courseid + '_mappings');
 	element.appendChild(noMapDiv);
 	showControls(courseid);
 	loaderToClose(courseid);
 	var saveElement = YAHOO.util.Dom.get('id_' + courseid + '_save');
 	YAHOO.util.Dom.setAttribute(saveElement, 'disabled', 'disabled');	
+}
+
+function removeNoMapsToCourseDiv(courseid){
+	var noMapElement = YAHOO.util.Dom.get('id_' + courseid + '_no_maps');
+	if(noMapElement != null){
+		noMapElement.parentNode.removeChild(noMapElement);
+	}
 }
 
 function appendMappingToGroupsPage(mapping){
@@ -545,12 +560,13 @@ function asyncRequest(op, xml){
 				if(o.responseText.match(/xml version/)){
 					//Got an XML doc returned, must be a success				
 					xmlDoc = loadXMLString(o.responseText);
-					cid = xmlDoc.getElementsByTagName("course_id").nodeValue;
+					cid = xmlDoc.getElementsByTagName("course_id")[0].firstChild.data;
 					xmlElements = xmlDoc.getElementsByTagName("map");
 					totalMaps[cid] = xmlElements.length;
 					appendCount[cid] = 0;
 					if(xmlElements.length > 0){
-						appendMappingToPage(xmlElements[0]);						
+						removeNoMapsToCourseDiv(cid);
+						appendMappingToPage(xmlElements[0], true);						
 					}
 					showAddingCohortTitle();
 					overlay.hide();
@@ -660,7 +676,7 @@ function asyncRequest(op, xml){
 				xmlDoc = loadXMLString(o.responseText);
 				xmlElements = xmlDoc.getElementsByTagName("map");
 				if(xmlElements.length > 0){
-					appendMappingToPage(xmlElements[0]);						
+					appendMappingToPage(xmlElements[0], false);						
 				}else{
 					srcXmlDoc = loadXMLString(xml);					
 					appendNoMapsToCourseDiv(srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data);

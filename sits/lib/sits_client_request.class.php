@@ -293,8 +293,7 @@ EOXML;
                             }
                         }
                         $mapping->specified = true;
-
-                        break;
+                    break;
                     case 'automatic':
                         $mapping->manual = false;
                         if($mapping->cohort->type == 'module'){
@@ -305,14 +304,15 @@ EOXML;
                         $mapping->end = $period->start;
                         $mapping->end = $period->end;
                         $mapping->specified = false;
-                        break;
+                    break;
                     case 'manual':
                         $mapping->manual = true;
                         $mapping->end = $mapping->start;
                         $mapping->end = new DateTime('1970-01-01 00:00:00');
                         $mapping->specified = false;
+                    break;
                 }
-                if($this->sits_sync->update_mapping(&$mapping)){
+                if($this->sits_sync->update_mapping($mapping)){
                     $returnXMLObj->addChild('updated', $mapping->id);
                 }else{
                     $returnXMLObj->addChild('error', 'Failed to update ' . $mapping->id);
@@ -554,7 +554,7 @@ EOXML;
                 $mapping->default,
                 $mapping->specified,
                 $mapping->start->format('Y-m-d'),
-                $mapping->start->format('Y-m-d'),
+                $mapping->end->format('Y-m-d'),
                 $mapping->cohort->sits_code,
                 $mapping->cohort->academic_year,
                 $mapping->cohort->year_group);

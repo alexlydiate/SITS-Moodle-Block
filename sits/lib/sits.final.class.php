@@ -14,7 +14,7 @@ final class sits extends sits_db {
 
     function __construct(&$report, $testing = false){
         //Connect to Oracle, or log error and return false
-        if($testing){
+        if(!$testing){
             $this->dbh = ocilogon(SITS_DB_USER, SITS_DB_PASS, SITS_DB_NAME);
         }else{
             $this->dbh = ocilogon(SITS_TEST_DB_USER, SITS_TEST_DB_PASS, SITS_TEST_DB_NAME);
