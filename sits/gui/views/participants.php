@@ -282,7 +282,7 @@ if ($context->id != $frontpagectx->id) {
     $select = 'SELECT DISTINCT u.id, u.username, u.firstname, u.lastname,
                       u.email, r.enrol, u.country, u.picture,
                       u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt, m.end_date, m.default_map,
-                      m.sits_code, m.acyear, m.period_code, m.specified, m.manual,
+                      m.sits_code, m.acyear, m.period_code, m.year_group, m.specified, m.manual,
                       COALESCE(ul.timeaccess, 0) AS lastaccess,
                       r.hidden,
                       ctx.id AS ctxid, ctx.path AS ctxpath,
@@ -293,7 +293,7 @@ if ($context->id != $frontpagectx->id) {
         $select = 'SELECT u.id, u.username, u.firstname, u.lastname,
                           u.email, r.enrol, u.country, u.picture,
                           u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt, m.end_date, m.default_map,
-                          m.sits_code, m.acyear, m.period_code, m.specified, m.manual,
+                          m.sits_code, m.acyear, m.period_code, m.year_group, m.specified, m.manual,
                           u.lastaccess, r.hidden,
                           ctx.id AS ctxid, ctx.path AS ctxpath,
                           ctx.depth AS ctxdepth, ctx.contextlevel AS ctxlevel ';
@@ -301,7 +301,7 @@ if ($context->id != $frontpagectx->id) {
         $select = 'SELECT u.id, u.username, u.firstname, u.lastname,
                           u.email, r.enrol, u.country, u.picture,
                           u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt, m.end_date, m.default_map,
-                          m.sits_code, m.acyear, m.period_code, m.specified, m.manual,
+                          m.sits_code, m.acyear, m.period_code, m.year_group, m.specified, m.manual,
                           u.lastaccess,
                           ctx.id AS ctxid, ctx.path AS ctxpath,
                           ctx.depth AS ctxdepth, ctx.contextlevel AS ctxlevel ';
@@ -388,12 +388,12 @@ if ($table->get_sql_where()) {
 if ($table->get_sql_sort()) {
     $sort = ' ORDER BY '.$table->get_sql_sort();
     if ($context->id != $frontpagectx->id or $roleid >= 0) {
-        $sort .= ', r.enrol ASC';
+        $sort .= ', u.lastname ASC';
     }
 } else {
     $sort = '';
     if ($context->id != $frontpagectx->id or $roleid >= 0) {
-        $sort .= ' ORDER BY r.enrol ASC';
+        $sort .= ' ORDER BY u.lastname ASC';
     }
 }
 
@@ -635,7 +635,16 @@ if ($fullmode) {    // Print simple listing
                 if($user->enrol == 'manual'){
                     $data[] = get_string('enrol_not_linked', 'block_sits');
                 }else{
-                    $data[] = $user->sits_code . ', ' . $user->acyear . ', ' . $user->period_code;
+                    if(is_null($user->period_code)){
+                    if($user->year_group == 0){
+                        $year_group = 'All';
+                    }else{
+                        $year_group = $user->year_group;
+                    }
+                    $data[] = $user->sits_code . ', ' . $user->acyear . ', ' . $year_group;
+                    }else{
+                    $data[] = $user->sits_code . ', ' . $user->acyear . ', ' . $user->period_code;    
+                    }
                 }
             }
             if (!isset($hiddenfields['unenrol_type'])) {

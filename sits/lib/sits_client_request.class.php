@@ -148,7 +148,7 @@ EOXML;
                         return false;
                     }
                 }catch(InvalidArgumentException $e){
-                    $this->sits_sync->report->log(1, 'The script ajaxhandling.php failed to instatiate module_cohort object - exception: ' . $e->getMessage());
+                    $this->sits_sync->log(1, 'The script ajaxhandling.php failed to instatiate module_cohort object - exception: ' . $e->getMessage());
                     $this->response = ERROR_FAILED_TO_INSTANTIATE_COHORT;
                     return false;
                 }
@@ -160,7 +160,7 @@ EOXML;
                         $this->response = ERROR_COHORT_FAILED_SITS_VALIDATION;
                     }
                 }catch(InvalidArgumentException $e){
-                    $this->sits_sync->report->log(1, 'The script ajaxhandling.php failed to instatiate program_cohort object - exception: ' . $e->getMessage());
+                    $this->sits_sync->log(1, 'The script ajaxhandling.php failed to instatiate program_cohort object - exception: ' . $e->getMessage());
                     $this->response = ERROR_FAILED_TO_INSTANTIATE_COHORT;
                     return false;
                 }

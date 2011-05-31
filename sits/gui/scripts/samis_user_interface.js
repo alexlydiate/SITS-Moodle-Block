@@ -178,6 +178,42 @@ function hideGroupLoading(){
 	YAHOO.util.Dom.setAttribute(controlsElement, 'style', 'display:block;');
 }
 
+function showGroupNoMaps(){
+	var mappingElement = YAHOO.util.Dom.get('select_mappings');
+	var noMapElement = YAHOO.util.Dom.get('grp_no_maps');
+	var groupSubmitElement = YAHOO.util.Dom.get('groupsubmit');
+	var groupSelectElement = YAHOO.util.Dom.get('select_groups');
+	var groupNameElement = YAHOO.util.Dom.get('groupname');
+	var groupRadioExistElement = YAHOO.util.Dom.get('grp_radio_exist');
+	var groupRadioCreateElement = YAHOO.util.Dom.get('grp_radio_create');
+	
+	groupRadioExistElement.disabled=true;
+	groupRadioCreateElement.disabled=true;
+	groupNameElement.disabled=true;
+	groupSubmitElement.disabled=true;
+	groupSelectElement.disabled=true;
+	YAHOO.util.Dom.setAttribute(mappingElement,'style', 'display:none;');
+	YAHOO.util.Dom.setAttribute(noMapElement,'style', 'display:block;');
+}
+
+function hideGroupNoMaps(){
+	var mappingElement = YAHOO.util.Dom.get('select_mappings');
+	var noMapElement = YAHOO.util.Dom.get('grp_no_maps');
+	var groupSubmitElement = YAHOO.util.Dom.get('groupsubmit');
+	var groupSelectElement = YAHOO.util.Dom.get('select_groups');
+	var groupNameElement = YAHOO.util.Dom.get('groupname');
+	var groupRadioExistElement = YAHOO.util.Dom.get('grp_radio_exist');
+	var groupRadioCreateElement = YAHOO.util.Dom.get('grp_radio_create');
+	
+	groupRadioExistElement.disabled=true;
+	groupRadioCreateElement.disabled=true;	
+	groupNameElement.disabled=false;
+	groupSubmitElement.disabled=false;
+	groupSelectElement.disabled=false;
+	YAHOO.util.Dom.setAttribute(mappingElement,'style', 'display:block;');
+	YAHOO.util.Dom.setAttribute(noMapElement,'style', 'display:none;');
+}
+
 function swapControlsForLoadMessage(courseid, txt){
 	hideControls(courseid);
 	showLoading(courseid, txt);
@@ -326,7 +362,7 @@ function get_days(date)
     days_html = '';
     var count;
     var day = date.getDate();
-    for(count = 1; count < 31; count++)
+    for(count = 1; count <= 31; count++)
     {
         if(count===day)
         {
@@ -403,6 +439,9 @@ function appendMappingToPage(mapping, newMap){
 		yeargroup = 'N/A';
 	}else{	
 		yeargroup = mapping.getElementsByTagName("year_group")[0].firstChild.data;
+		if(yeargroup == '0'){
+			yeargroup = 'All';
+		}
 		periodcode = 'N/A';
 	}	
 	var default_map = mapping.getElementsByTagName("default")[0].firstChild.data;	
@@ -414,7 +453,7 @@ function appendMappingToPage(mapping, newMap){
 	var unenrol_type = get_unenrolment_types(mapping);	
 	html = '<p class="course_detail" id="id_' + id + '">';
 	if(newMap === true){
-		html += '<strong class="mpg_category">NEWLY ADDED: </strong>';
+		html += '<strong class="mpg_category">COHORT SAVED: </strong>';
 	}
 	html += '<span class="mpg_category">SAMIS Code: </span>';
 	html += '<strong class="mpg_category">' + sitscode + '</strong>';
@@ -529,16 +568,15 @@ function appendMappingToGroupsPage(mapping){
 
 function appendNoMapsToGroupsPage(courseid){
 	var noMapDiv = document.createElement("div");
+	var mappingElement = YAHOO.util.Dom.get('steps_two_and_three');
+	var noMapElement = YAHOO.util.Dom.get('grp_no_maps');
+	noMapDiv.id = 'no_map_div';
 	html = '<p class="course_detail" id="' + courseid + '">';
 	html += 'No current mappings exist for this course.';
 	html +='</p>';
-	noMapDiv.innerHTML = html;
-	var element = YAHOO.util.Dom.get('select_mappings');
-	element.appendChild(noMapDiv);
-	showControls(courseid);
-	loaderToClose(courseid);
-	element = YAHOO.util.Dom.get(courseid + '_save');
-	YAHOO.util.Dom.setAttribute(element, 'disabled', 'disabled');	
+	setTextContent(noMapDiv, html);	
+	YAHOO.util.Dom.setAttribute(mappingElement,'style', 'display:none;');
+	YAHOO.util.Dom.setAttribute(noMapElement,'style', 'display:block;');
 }
 
 function appendGroupToSelect(groupXml){
@@ -696,9 +734,9 @@ function asyncRequest(op, xml){
 						getMapXML += "<map><id>" + xmlElements[i].firstChild.data + "</id></map>"; 
 						asyncRequest('get_map_group', getMapXML);
 					}
+					hideGroupLoading();
 				}else{
-					srcXmlDoc = loadXMLString(xml);					
-					appendNoMapsToGroupsPage(srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data);
+					showGroupNoMaps();
 					hideGroupLoading();
 				}
 			};
@@ -707,11 +745,11 @@ function asyncRequest(op, xml){
 			    responseSuccess = function(o) {
 				xmlDoc = loadXMLString(o.responseText);
 				xmlElements = xmlDoc.getElementsByTagName("map");
-				if(xmlElements.length > 0){
+				if(xmlElements.length > 0){	
 					appendMappingToGroupsPage(xmlElements[0]);						
 				}else{
-					srcXmlDoc = loadXMLString(xml);					
-					appendNoMapsToGroupsPage(srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data);
+					showGroupNoMaps();
+					hideGroupLoading();
 				}
 			};
 		break;
@@ -875,7 +913,7 @@ function view_groups_page()
 function save_course_changes(courseid)
 {
 	var confirmed;
-	confirmed = confirm('Please confirm  to save your changes to the mappings for course id ' + courseid);
+	confirmed = confirm('Please confirm to save your changes to the mappings');
 	if(confirmed)
 	{
 		xml = create_batch_xml(courseid);
@@ -887,7 +925,7 @@ function save_course_changes(courseid)
 
 function sync_course(course_id){
 	var confirmed;
-	confirmed = confirm('Please confirm you would like to sync the Moodle course ' + course_id + ' with SAMIS');
+	confirmed = confirm('Please confirm you would like to sync this Moodle course with SAMIS');
 	if(confirmed){
 		var saveConfirm = true;
 		if(changes[course_id] === true){					
@@ -927,7 +965,7 @@ function add_module_to_mappings() {
 	var titleElement = YAHOO.util.Dom.get('which-samis-module');
 	var course_id = getTextContent(titleElement);
 	var codeElement = YAHOO.util.Dom.get('samis-module');
-	var sits_code = codeElement.value;
+	var sits_code = codeElement.value.toUpperCase();
 	var type = YAHOO.util.Dom.get('select_moduletype');
 	var dayElement = YAHOO.util.Dom.get('id_add_map_day');
 	var monElement = YAHOO.util.Dom.get('id_add_map_month');
@@ -940,7 +978,7 @@ function add_module_to_mappings() {
 	var dateStringToSend = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();	
 	var progPatt = /^[A-z]{4}\-[A-z]{3}\d{2}$/;
 	var unitPatt = /^[A-z]{2}\d{5}$/;
-
+	
 	if (sits_code === '') {
 		alert('Please specify a SAMIS cohort.');
 		codeElement.focus();
@@ -977,7 +1015,7 @@ function add_module_to_mappings() {
 	
 	mappingXML = createMappingXML(
 			course_id,
-			codeElement.value,
+			sits_code,
 			type.options[type.selectedIndex].value,
 			acYearElement.options[acYearElement.selectedIndex].value,
 			period_code, 
@@ -1060,6 +1098,7 @@ function update_group_list(courseid) {
 }
 
 function set_group_options(){
+	hideGroupNoMaps();
 	showGroupLoading('Loading mapped cohorts - please wait');
 	var selectElement;
 	selectElement = YAHOO.util.Dom.get('grp_course');
@@ -1236,3 +1275,4 @@ function init() {
 }
 
 YAHOO.util.Event.onDOMReady(init);
+

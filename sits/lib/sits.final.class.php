@@ -604,10 +604,12 @@ sql;
     protected function set_sql_all_programs(){
         $this->sql_all_programs = <<<sql
 SELECT DISTINCT * FROM(
-SELECT crs.crs_code "sits_code"
-FROM srs_sce sce, srs_crs crs
-WHERE sce.sce_crsc = crs.crs_code 
+SELECT crs.crs_code "sits_code", crs.crs_name "shortname", crs.crs_titl "fullname", crs.crs_dptc "dep_code"
+FROM srs_sce sce, srs_crs crs, ins_prs prs
+WHERE sce.sce_crsc = crs.crs_code
+AND crs.crs_prsc = prs.prs_code 
 AND sce.sce_stac NOT IN ('G', 'DE', 'L', 'NS', 'T')
+AND crs.crs_prsc IS NOT NULL
 sql;
 
         $this->sql_all_programs .= ' %1$s)';
@@ -863,3 +865,4 @@ AND yps_endd >= sysdate
 sql;
     }
 }
+

@@ -27,6 +27,12 @@ require_once('../../../lib/grouplib.php');
 require_once("../lib/sits_sync.class.php");  //This used to require samis_management...not no more!
 require_once("../config/sits_config.php");
 require_once('./samis_interface_logic.php');//This is where the business end of the PHP is now residing
+
+require_login();
+if (isguestuser()) {
+    print_error('guestsarenotallowed', '', $returnurl); //FIXME need more security than this
+}
+
 //Markup starts here
 include('./samis_head.php');?>
 <body>
@@ -52,11 +58,10 @@ include('./samis_head.php');?>
 <div class="mng_groups" id='groups'>
 <div name="grp_course_select" class="grpblock">
 <h5>Step 1: Select a course</h5>
-<br />
 <form name="samis_add_user_action_form" class="samis_add_user"
 	method="post" action="samis_combo_interface.php"><select
 	id="grp_course" name="grp_course" onChange="set_group_options()"
-	style="width: 40em;">
+	>
 
 	<?php
 	foreach($course_is_tutor_on as $cur_course)
@@ -67,49 +72,50 @@ include('./samis_head.php');?>
 	?>
 </select></form>
 </div>
-<div name="grp_cohort_select" class="grpblock">
-<h5>Step 2: Select a mapped cohort</h5>
-<br />
-<select multiple="multiple" name="listcohorts[]" id="select_mappings"
-	style="width: 40em;">
-	<!-- populated by js function -->
-</select> <br />
-</div>
-<div id="group_controls">
-<div name="grp_group_select" class="grpblock">
-<h5>Step 3: Create a new group or add to an existing group</h5>
-<br />
-<span class="samis_font">Enter a name for the group or select an
-existing one for this course from the drop down menu.<br />
-<br />
-
-<div id="add_to_existing"><input type="radio" id="grp_radio_exist"
-	name="action" value="add" /> Add to existing group <select
-	id="select_groups" name="group_reference" onclick="groupexistselect();">
-	<!-- populated by js function -->
-</select></div>
-<div id="no_existing_groups" style="display: none"><b>There are no
-groups related to this course</b></div>
-<br />
-<input type="text" name="courseid" value="<?php echo($courseid); ?>"
-	style="display: none" /> <input type="radio" id="grp_radio_create"
-	name="action" value="create" /> Create new group <input type="text"
-	name="groupname" id="groupname" value="Enter group name"
-	onclick="groupnameselect();" /> </span>
-<hr />
-</div>
-<br />
-<input id="groupsubmit" name="groupsubmit" type="submit"
-	onclick="create_or_add_to_group()" value="Create / Add to Group" /> <input
-	id="viewgroups" name="viewgroups" type="submit"
-	onclick="view_groups_page()" value="Open Groups Page" />
-<hr />
-</div>
-<div id="groups_load_message" class="groups_load_message"><img
-	class="liloader" src="./images/liloader.gif" alt="Loading"
-	/ style="float: left;">
-<div id="groups_load_message_text" style="float: left;"></div>
-</div>
+    <div id="steps_two_and_three">
+        <div id="grp_cohort_select" name="grp_cohort_select" class="grpblock">
+        <h5>Step 2: Select mapped cohort(s)</h5>
+        <select multiple="multiple" name="listcohorts[]" id="select_mappings"
+        	style="width: 40em;">
+        	<!-- populated by js function -->
+        </select>
+        <div id = "grp_no_maps" style="display: none"><p>You'll need to map a cohort to this course before you can add it to a group.</p></div>
+        </div>
+        <div id="group_controls">
+        <div name="grp_group_select" class="grpblock">
+        <h5>Step 3: Create a new group or add to an existing group</h5>
+        <span class="samis_font">Enter a name for the group or select an
+        existing one for this course from the drop down menu.<br />
+        <br />
+        
+        <div id="add_to_existing"><input type="radio" id="grp_radio_exist"
+        	name="action" value="add" /> Add to existing group <select
+        	id="select_groups" name="group_reference" onclick="groupexistselect();">
+        	<!-- populated by js function -->
+        </select></div>
+        <div id="no_existing_groups" style="display: none"><b>There are no
+        groups related to this course</b></div>
+        <br />
+        <input type="text" name="courseid" value="<?php echo($courseid); ?>"
+        	style="display: none" /> <input type="radio" id="grp_radio_create"
+        	name="action" value="create" /> Create new group <input type="text"
+        	name="groupname" id="groupname" value="Enter group name"
+        	onclick="groupnameselect();" /> </span>
+        <hr />
+        </div>
+        <br />
+        <input id="groupsubmit" name="groupsubmit" type="submit"
+        	onclick="create_or_add_to_group()" value="Create / Add to Group" /> <input
+        	id="viewgroups" name="viewgroups" type="submit"
+        	onclick="view_groups_page()" value="Open Groups Page" />
+        <hr />
+        </div>
+        <div id="groups_load_message" class="groups_load_message"><img
+        	class="liloader" src="./images/liloader.gif" alt="Loading"
+        	/ style="float: left;">
+        <div id="groups_load_message_text" style="float: left;"></div>
+        </div>
+    </div>
 </div>
 
 <!--END OF GROUPS--> <!--START OF COHORTS-->
@@ -118,7 +124,7 @@ groups related to this course</b></div>
 				<input type="submit" class="savechanges" id="btn_cohort_save" value="Save All Changes" disabled=true onclick="commit();" />  -->
 <div class="filter"><input id="course_search_input" type="text"
 	onkeyup="filterCourses(this.value)"></input> Enter part of a course
-name to filter display</div>
+name or idnumber to filter display</div>
 </div>
 <div id="course_search"></div>
 <div id="courses" class="course-list"><!-- <h4>Your Moodle Courses</h4>  -->
@@ -135,7 +141,7 @@ name to filter display</div>
 					    echo('		<a id="id_' . $cur_course->id . '_plus" class="expand" onclick="loadMappingsForCourse(' . $cur_course->id . ');">' ."\n");
 					    echo('			<img id="id_' . $cur_course->id . '_plus_img" class="toggle" src="./images/switch_plus.gif" alt="Toggle visibility" />' ."\n");
 					    echo('		</a>' ."\n");
-					    echo('		<b>' . $cur_course->fullname . ' (' .$cur_course->shortname . ')</b>' ."\n");
+					    echo('		<b>' . $cur_course->fullname . '</b><div style="display: none;">' .$cur_course->shortname . ' / ' . $cur_course->idnumber . "</div>\n");
 					    echo(	'</div>' ."\n");
 					    echo('	<div id="course_' . $cur_course->id . '" class="collapsible course">' ."\n");
 					    echo('<div id = "id_' . $cur_course->id . '_content" class="course-cont">');

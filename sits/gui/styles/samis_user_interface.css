@@ -123,11 +123,15 @@ form.apply_changes {
 
 .grpblock {
 	padding: 3px;
-	border-width: 2px;
-	border-style: groove;
+	border: 1px solid #DDDDDD;
 	margin-top: 9px;
-	margin-top: 9px;
+	width: 660px;
 }
+
+.grpblock h5 {
+    color: #000000;
+}
+
 
 .btn_tab {
 	
@@ -143,8 +147,7 @@ form.apply_changes {
 }
 
 .samis_font {
-	font-size: 13.2833px;
-	font-family: Geneva, Arial, Helvetica, sans-serif;
+	font-size: 0.9em;
 }
 
 .map_select {
@@ -178,6 +181,8 @@ groups_load_message {
 
 #outertab {
 	margin: 7px 0 7px 0;
+	padding: 3px 0 3px 0;
+	/*background-color: #818181; */
 }
 
 .pagetitle {
@@ -192,3 +197,12 @@ groups_load_message {
 	text-align: center;
 	margin-top: 1em;
 }
+
+.mng_groups {
+    font-size: 1.2em;
+}
+
+#select_mappings{
+    height: 200px; 
+}
+

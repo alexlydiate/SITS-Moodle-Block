@@ -27,7 +27,7 @@ class block_sits extends block_base {
 
     function init() {
         $this->title   = get_string('sits', 'block_sits');
-        $this->version = 2011050506;
+        $this->version = 2011053101;
         $this->cron = 300;
     }
 
@@ -61,7 +61,7 @@ class block_sits extends block_base {
             case 1: //Cron is set to Daily
                 $now = new DateTime();
                 $last_cron_sync = new DateTime($CFG->sits_last_cron_sync);
-                if($now->format('Y-m-d') != $last_cron_sync->format('Y-m-d') && (int)$now->format('G') > $CFG->sits_hour_of_sync){
+                if($now->format('Y-m-d') != $last_cron_sync->format('Y-m-d') && (int)$now->format('G') >= $CFG->sits_hour_of_sync){
                     //sync has not run today and it's past the hour - mark it, and do it
                     set_config('sits_last_cron_sync', $now->format('Y-m-d H:i:s'));
                     return $this->run_full_sync();

@@ -29,7 +29,6 @@ class sits_sync implements i_sits_sync {
     private $count_users_to_courses = 0; //count of the total number of memberships added
     private $assignments = 0; //count of new role assignments
     private $duplicate_assignments = 0; //count of duplicate assignments
-    private $course_data; //Object for passing to create_course()
 
     public function __construct($testing = false){
         $this->report = new report();
@@ -37,7 +36,6 @@ class sits_sync implements i_sits_sync {
         $this->sits = new sits($this->report, $testing);
         $this->set_academic_year();
         $this->set_last_academic_year();
-        $this->build_course_data_object();
     }
 
     //////////////////////Implementation of i_sits_sync///////////////////////////
@@ -47,9 +45,9 @@ class sits_sync implements i_sits_sync {
         if(is_array($mappings)){
             foreach($mappings as $mapping){
                 if($mapping->active){
-       	            if(!$this->sync_mapping($mapping)){
-       	                $this->report->log_report(1, 'Failed to sync mapping id ' . $mapping->id);
-       	            }
+                    if(!$this->sync_mapping($mapping)){
+                        $this->report->log_report(1, 'Failed to sync mapping id ' . $mapping->id);
+                    }
                 }
             }
             return true;
@@ -73,28 +71,24 @@ class sits_sync implements i_sits_sync {
         set_config('sits_sync_all', 1);
          
         $this->report->log_report(0, 'Started syncing all courses');
-        if($this->sync_modules_with_sits()){
-            $this->report->log_report(0, 'Finished syncing all modules');
-        }else{
+        if(!$this->sync_modules_with_sits()){
             $this->report->log_report(2, 'Failed to sync all modules');
             set_config('sits_sync_all', 0);
             return false;
         }
 
-        if($this->sync_programs_with_sits()){
-            $this->report->log_report(0, 'Finished syncing all programs');
-        }else{
+        if(!$this->sync_programs_with_sits()){
             $this->report->log_report(2, 'Failed to syncing all programs');
             set_config('sits_sync_all', 0);
             return false;
         }
-         
-        $this->report->log_report(0, 'Started mapping sync');
+
         if(!$this->sync_all_mappings()){
             $this->report->log_report(2, 'Failed to sync any mappings');
             set_config('sits_sync_all', 0);
             return false;
         }
+        
         $this->report->log_report(0, 'Finished syncing all courses');
          
         set_config('sits_sync_all', 0);
@@ -545,9 +539,9 @@ sql;
     }
 
     /**
-     * Syncs all SITS modules with their respective Moodle courses.
+     * Syncs all SITS modules with their respective Moodle courses. FIXME This should be abstracted from using Oracle functions.
      * If a Moodle course does not exist for a particular SITS module one will be created
-     * @return boolean
+     * @return boolean 
      */
     private function sync_modules_with_sits(){
         $academic_years = array($this->last_academic_year, $this->academic_year);
@@ -564,24 +558,8 @@ sql;
                 if(is_array($courses) && count($courses) > 1){
                     $this->report->log_report(1, 'Multiple Moodle courses found for module ' . $row->sits_code . ' - will sync all, though please review');
                 }elseif(!is_array($courses)){
-                    //Jiggle the row into an appropriate object to create a course
-                    $this->course_data->idnumber = str_replace("'", "\'", $row->sits_code);
-                    $this->course_data->shortname = str_replace("'", "\'", $row->shortname);
-                    $this->course_data->fullname = str_replace("'", "\'", $row->fullname);
-                    //Get Moodle category from SITS department code, or set cetegory to 1 (miscellaneous)
-                    $category = get_record('sits_categories', 'sits_dep_code', $row->dep_code);
-                    if(is_object($category)){
-                        $this->course_data->category = $category->category_id;
-                    }else{
-                        $this->course_data->category = 1;
-                    }
-                    $course = create_course($this->course_data);
-                    if(is_object($course)){
-                        $this->created_courses++;
-                        $courses = array();
-                        $courses[] = $course;
-                    }else{
-                        $this->report->log_report(1, 'Failed to create course for SITS code ' . $row->sits_code);
+                    if(!$this->create_course_for_cohort(&$row)){
+                        $this->report->log_report(1, 'Failed to create course for module with SITS code ' . $row->sits_code);
                     }
                 }
                  
@@ -599,11 +577,11 @@ sql;
 
     /**
      * Syncs all SITS programs with their respective Moodle course, should one exist
-     * FIXME new requirement unearthed: Programs should be automatically created, then hidden.  No good reason why.  Do it anyway :)
-     * @return boolean
+     * Program courses in Moodle should be automatically created, then hidden.
+     * FIXME This should be abstracted from using Oracle functions.
+     * @return boolean 
      */
     private function sync_programs_with_sits(){
-
         $progs_rh = $this->sits->progs_for_academic_year($this->academic_year);
         if($progs_rh === false){
             $this->report->log_report(1, 'Failed to get programs for academic year resource from SITS');
@@ -611,9 +589,12 @@ sql;
         }
         while($row = oci_fetch_object($progs_rh)){
             $courses = get_records('course', 'idnumber', $row->sits_code);
-
             if(is_array($courses) && count($courses) > 1){
                 $this->report->log_report(1, 'Multiple Moodle courses found for program ' . $row->sits_code . ' - will sync all, though please review');
+            }elseif(!is_array($courses)){
+                if(!$this->create_course_for_cohort(&$row)){
+                    $this->report->log_report(1, 'Failed to create course for module with SITS code ' . $row->sits_code);
+                }
             }
             //Only sync programs for which there is already a course created in Moodle - sadly, there may be more than one
             if(is_array($courses)){
@@ -626,6 +607,66 @@ sql;
         return true;
     }
 
+    /**
+     * Will create a Moodle course for the SAMIS cohort, the information of which is passed in the $cohort_data
+     * @return boolean
+     * @param object $cohort_data FIXME this could be class-defined
+     * @return boolean
+     */
+private function create_course_for_cohort(&$cohort_data){
+    
+    $site = get_site();
+        if(!$site){
+           $this->report->log_report(1, 'Could not get data template from get_record in build_course_data()');
+           return false;
+        }   
+
+        $course_data = new StdClass();     
+        $course_data->startdate = time() + 3600 * 24;
+        $course_data->summary = get_string("defaultcoursesummary");
+        $course_data->format = "weeks";
+        $course_data->password = '';
+        $course_data->guest = 0;
+        $course_data->numsections = 10;
+        $course_data->idnumber = '';
+        $course_data->cost = '';
+        $course_data->newsitems = 5;
+        $course_data->showgrades = 1;
+        $course_data->groupmode = 0;
+        $course_data->groupmodeforce = 0;
+        $course_data->student = $site->student;
+        $course_data->students = $site->students;
+        $course_data->teacher = $site->teacher;
+        $course_data->teachers = $site->teachers;        
+        $course_data->idnumber = str_replace("'", "\'", $cohort_data->sits_code);
+        $course_data->shortname = str_replace("'", "\'", $cohort_data->shortname);
+        $course_data->fullname = str_replace("'", "\'", $cohort_data->fullname);
+        $course_data->format = 'topics';
+        $course_data->visible = 0;
+        //Get Moodle category from SITS department code, or set cetegory to 1 (miscellaneous)
+        $category = get_record('sits_categories', 'sits_dep_code', $cohort_data->dep_code);        
+        if(is_object($category)){
+            $cat_record = get_record('course_categories', 'id', $category->category_id);
+            if(is_object($cat_record) && is_int($category->id)){ //Does the category id exist?
+                $course_data->category = $cat_record->id;
+                var_dump($course_data->category);
+            }else{
+                $course_data->category = 1;    
+            }
+        }
+        
+        $course = create_course($course_data);
+        if(is_object($course)){
+            $this->created_courses++;
+            $courses = array();
+            $courses[] = $course;
+            return true;
+        }else{
+            return false;
+        }
+    }
+        
+        
     /**
      * Given a valid mapping object will sync that mapping with SITS
      * @param mapping object $mapping
@@ -689,7 +730,7 @@ sql;
         }else{ //Non-default mappings only sync students
             $members_rh = $this->sits->mod_student_members_rh($mapping->cohort);
         }
-        	
+            
         if($members_rh === false){
             return false;
         }else{
@@ -717,17 +758,17 @@ sql;
                 $user = false;
             }
             if(is_object($user)){
-       	        $role_id = $this->map_sits_role_to_moodle($row->role);
-       	        //Does the assignment already exist for this mapping?
-       	        $assignment = get_record('role_assignments', 'userid', $user->id, 'contextid', $course_context->id, 'roleid', $role_id);
-       	        if(is_object($assignment)){
-       	            if(!$this->take_assignment_ownership(&$mapping, &$assignment)){
-       	                $this->report->log_report(1, 'Failed to take ownership '  . $row->sits_code . '; cannot enrol ' . $row->username . ', in process_full_sync' );
-       	            }
-       	        }else{
-       	            //No current assignment; make it so:
-       	            if(!$this->add_user_to_course($user->id, $role_id, $mapping) === true){
-       	                $this->report->log_report(1, 'Failed to add user to course '  . $row->sits_code . '; cannot enrol ' . $row->username . ', in process_full_sync' );
+                $role_id = $this->map_sits_role_to_moodle($row->role);
+                //Does the assignment already exist for this mapping?
+                $assignment = get_record('role_assignments', 'userid', $user->id, 'contextid', $course_context->id, 'roleid', $role_id);
+                if(is_object($assignment)){
+                    if(!$this->take_assignment_ownership(&$mapping, &$assignment)){
+                        $this->report->log_report(1, 'Failed to take ownership '  . $row->sits_code . '; cannot enrol ' . $row->username . ', in process_full_sync' );
+                    }
+                }else{
+                    //No current assignment; make it so:
+                    if(!$this->add_user_to_course($user->id, $role_id, $mapping) === true){
+                        $this->report->log_report(1, 'Failed to add user to course '  . $row->sits_code . '; cannot enrol ' . $row->username . ', in process_full_sync' );
                     }
                 }
             }
@@ -758,38 +799,6 @@ sql;
             $this->assignments++;
             return true;
         }
-    }
-
-    /**
-     * setter function - builds course data object template
-     * @return boolean
-     */
-    private function build_course_data_object(){
-        if (!$site = get_site()){
-            $this->report->log_report(1, 'Could not get data template from get_record in build_course_data()');
-            return false;
-        }
-         
-        $this->course_data = new stdClass();
-         
-        $this->course_data->startdate = time() + 3600 * 24;
-        $this->course_data->summary = get_string("defaultcoursesummary");
-        $this->course_data->format = "weeks";
-        $this->course_data->password = '';
-        $this->course_data->guest = 0;
-        $this->course_data->numsections = 10;
-        $this->course_data->idnumber = '';
-        $this->course_data->cost = '';
-        $this->course_data->newsitems = 5;
-        $this->course_data->showgrades = 1;
-        $this->course_data->groupmode = 0;
-        $this->course_data->groupmodeforce = 0;
-        $this->course_data->student = $site->student;
-        $this->course_data->students = $site->students;
-        $this->course_data->teacher = $site->teacher;
-        $this->course_data->teachers = $site->teachers;
-
-        return true;
     }
 
     /**
@@ -1056,3 +1065,4 @@ sql;
 
     }
 }
+
