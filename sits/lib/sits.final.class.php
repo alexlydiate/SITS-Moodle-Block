@@ -632,13 +632,12 @@ sql;
 
     protected function set_sql_prog_tutors(){
         $this->sql_prog_tutors = <<<sql
-SELECT prs.prs_emad "username", crs.crs_code "sits_code", crs.crs_titl "fullname", dpt.dpt_code "dep_code", 2 "role"
-FROM srs_sce sce, srs_crs crs, srs_cbo cbo, ins_prs prs, ins_dpt dpt 
-WHERE crs.crs_code = cbo.cbo_crsc
-AND sce.sce_crsc = crs.crs_code 
-AND crs.crs_dptc = dpt.dpt_code 
-AND cbo.cbo_prsc = prs.prs_code
-AND prs.prs_emad IS NOT NULL
+SELECT prs.prs_emad "username", crs.crs_code "sits_code", crs.crs_titl "fullname", crs.crs_dptc "dep_code", 2 "role"
+FROM srs_sce sce, srs_crs crs, ins_prs prs
+WHERE sce.sce_crsc = crs.crs_code
+AND crs.crs_prsc = prs.prs_code 
+AND sce.sce_stac NOT IN ('G', 'DE', 'L', 'NS', 'T')
+AND crs.crs_prsc IS NOT NULL
 sql;
         //this to give a vconditions placeholder; because EOT parses $variables, so you can't stick it straight in
         $this->sql_prog_tutors .= ' %1$s';
@@ -646,14 +645,14 @@ sql;
 
     protected function set_sql_prog_other_tutors(){
         $this->sql_prog_other_tutors = <<<sql
-SELECT prs.prs_emad "username", crs.crs_code "sits_code", crs.crs_titl "fullname", dpt.dpt_code "dep_code", 2 "role"
-FROM srs_sce sce, srs_crs crs, srs_cbo cbo, ins_prs prs, ins_dpt dpt, men_xon xon
-WHERE crs.crs_code = cbo.cbo_crsc
-AND sce.sce_crsc = crs.crs_code 
-AND crs.crs_dptc = dpt.dpt_code 
-AND cbo.cbo_prsc = prs.prs_code
+SELECT prs.prs_emad "username", crs.crs_code "sits_code", crs.crs_titl "fullname", crs.crs_dptc "dep_code", 2 "role"
+FROM srs_crs crs, ins_prs prs, men_xon xon, srs_sce sce
+WHERE sce.sce_crsc = crs.crs_code
+AND crs.crs_code = SUBSTR(xon.xon_tabl,4,10)
+AND SUBSTR(xon.xon_tabl,1,3) = 'EC-'
 AND xon.xon_oldv = prs.prs_code
 AND prs.prs_emad IS NOT NULL
+AND crs.crs_dptc IS NOT NULL
 sql;
         //this to give a conditions placeholder; because EOT parses $variables, so you can't stick it straight in
         $this->sql_prog_other_tutors .= ' %1$s';
@@ -738,8 +737,8 @@ men_xon xon
 WHERE smo.mod_code=mod.mod_code
 AND mod.DPT_CODE=dpt.DPT_CODE
 AND xon.xon_oldv=prs.PRS_CODE
-AND smo.mod_code = SUBSTR(xon.xon_tabl,5)
-AND SUBSTR(xon.xon_tabl,1,4) = 'ELM-'
+AND smo.mod_code = SUBSTR(xon.xon_tabl,4)
+AND SUBSTR(xon.xon_tabl,1,3) = 'EM-'
 AND SUBSTR(mod.mod_code,1,2) != 'ZZ'
 sql;
         //this to give a conditions placeholder; because EOT parses $variables, so you can't stick it straight in
@@ -865,4 +864,5 @@ AND yps_endd >= sysdate
 sql;
     }
 }
+
 

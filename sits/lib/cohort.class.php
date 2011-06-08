@@ -55,7 +55,7 @@ abstract class gen_mod_cohort extends cohort {
     protected function validate_module(){
 
         if(!$this->validate_sits_code($this->sits_code)){
-            throw new InvalidArgumentException('$sits_code ' . $sits_code . ' is invalid');
+            throw new InvalidArgumentException('$sits_code ' . $this->sits_code . ' is invalid');
         }
 
         if(!$this->validate_acyear($this->academic_year)){
@@ -197,3 +197,4 @@ class grade_module_cohort extends gen_mod_cohort {
         $this->validate_module();
     }
 }
+

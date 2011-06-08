@@ -280,7 +280,7 @@ function createMappingXML(course_id, sits_code, type, academic_year, period_code
 	XML = "<?xml version='1.0' standalone='yes'?>";
 	XML += '<map>';
 	XML += '<course_id>' + course_id + '</course_id>';
-	XML += '<manual>' + unenrol + '</manual>';
+	XML += '<unenrol>' + unenrol + '</unenrol>';
 	XML += '<default>' + 'false' + '</default>';
 	XML += '<start_date></start_date>';
 	XML += '<end_date>' + date + '</end_date>';	

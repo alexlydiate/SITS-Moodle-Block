@@ -178,9 +178,9 @@ EOXML;
 
         $default = false; //Never going to create default mappings through the GUI
          
-        switch($this->xml->manual){
+        switch($this->xml->unenrol){
             case 'specified':
-                $manual = true;
+                $manual = false;
                 $start_date = new DateTime();
                 $end_date = new DateTime((string)$this->xml->end_date);
                 $specified = true;
@@ -354,7 +354,7 @@ EOXML;
          
         $validate = $this->sits_sync->validate_bucs_id($bucs_id);
         if(!is_object($validate)){
-            $returnXMLObj->addChild('message',  $bucs_id . ' could not be found on the SAMIS database.');
+            $returnXMLObj->addChild('message',  $bucs_id . ' is not a valid BUCS username. Please try again.');
             $this->content_type = 'text/xml';
             $this->response = $returnXMLObj->asXML();
             return false;

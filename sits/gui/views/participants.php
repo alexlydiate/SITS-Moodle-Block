@@ -240,10 +240,10 @@ if ($course->enrolperiod) {
     $tableheaders[] = get_string('enrolmentend');
 }
 
-if ($bulkoperations) {
+/*if ($bulkoperations) {
     $tablecolumns[] = '';
     $tableheaders[] = get_string('select');
-}
+}*/
 
 $table = new flexible_table('user-index-participants-'.$course->id);
 
@@ -682,9 +682,9 @@ if ($fullmode) {    // Print simple listing
                     $data[] = get_string('unlimited');
                 }
             }
-            if ($bulkoperations) {
+            /*if ($bulkoperations) {
                 $data[] = '<input type="checkbox" name="user'.$user->id.'" />';
-            }
+            }*/ //
             $table->add_data($data);
 
         }
@@ -696,8 +696,8 @@ if ($fullmode) {    // Print simple listing
 
 if ($bulkoperations) {
     echo '<br /><div class="buttons">';
-    echo '<input type="button" onclick="checkall()" value="'.get_string('selectall').'" /> ';
-    echo '<input type="button" onclick="checknone()" value="'.get_string('deselectall').'" /> ';
+    //echo '<input type="button" onclick="checkall()" value="'.get_string('selectall').'" /> ';
+    //echo '<input type="button" onclick="checknone()" value="'.get_string('deselectall').'" /> ';
     $displaylist = array();
     $displaylist['messageselect.php'] = get_string('messageselectadd');
     if (!empty($CFG->enablenotes) && has_capability('moodle/notes:manage', $context) && $context->id != $frontpagectx->id) {
@@ -710,8 +710,8 @@ if ($bulkoperations) {
         $displaylist['groupextendenrol.php'] = get_string('groupextendenrol');
     }
 
-    helpbutton("participantswithselectedusers", get_string("withselectedusers"));
-    choose_from_menu ($displaylist, "formaction", "", get_string("withselectedusers"), "if(checksubmit(this.form))this.form.submit();", "");
+    //helpbutton("participantswithselectedusers", get_string("withselectedusers"));
+    //choose_from_menu ($displaylist, "formaction", "", get_string("withselectedusers"), "if(checksubmit(this.form))this.form.submit();", "");
     echo '<input type="hidden" name="id" value="'.$course->id.'" />';
     echo '<div id="noscriptparticipantsform" style="display: inline;">';
     echo '<input type="submit" value="'.get_string('ok').'" /></div>';
@@ -725,10 +725,10 @@ if ($bulkoperations) {
 
 }
 
-if (has_capability('moodle/site:viewparticipants', $context) && $totalcount > ($perpage*3)) {
+/*if (has_capability('moodle/site:viewparticipants', $context) && $totalcount > ($perpage*3)) {
     echo '<form action="index.php" class="searchform"><div><input type="hidden" name="id" value="'.$course->id.'" />'.get_string('search').':&nbsp;'."\n";
     echo '<input type="text" name="search" value="'.s($search).'" />&nbsp;<input type="submit" value="'.get_string('search').'" /></div></form>'."\n";
-}
+}*/
 
 $perpageurl = preg_replace('/&amp;perpage=\d*/','', $baseurl);
 if ($perpage == SHOW_ALL_PAGE_SIZE) {
