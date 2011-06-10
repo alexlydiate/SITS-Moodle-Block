@@ -150,7 +150,7 @@ abstract class sits_db implements i_sits_db {
         $result = oci_fetch_object($this->validate_program_stm);
 
         if(count($result) == 1){
-            return true; // The three properties of the $program_cohort cohort return exactly one program intance from SITS
+            return true; // The three properties of the $program_cohort cohort return exactly one program instance from SITS
         }else{
             return false; //They don't, therefore $program_cohort cohort does not refer to a unique cohort.
             //Perhaps in the fullness of time report this fact, iterating over result?
@@ -260,7 +260,7 @@ abstract class sits_db implements i_sits_db {
         $this->academic_year = $module_cohort->academic_year;
 
         if(!oci_execute($stm)){
-            $this->report->log_report(2, sprintf('Failed to execute program cohort query for %s:%s:%s',
+            $this->report->log_report(2, sprintf('Failed to execute module cohort query for %s:%s:%s',
             $module_cohort->sits_code,
             $module_cohort->period_code,
             $module_cohort->academic_year

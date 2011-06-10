@@ -35,6 +35,7 @@ if (isguestuser()) {
 
 //Markup starts here
 include('./samis_head.php');?>
+
 <body>
 <div id="canvas">
 <div class="bath-header">
@@ -48,11 +49,11 @@ include('./samis_head.php');?>
 <div id="outertab"><!-- <div class="samis_notice">
 					This tool is for mapping SAMIS student cohorts to Moodle courses, and creating Moodle groups from SAMIS cohorts. Before creating groups you must first map the relevant cohorts. To sync an individual course with SAMIS, press the 'Sync Course' button for that course.  All courses are automatically synced overnight.
 				</div> --> <input name="tabcohort2" type="submit" id="cohort_btn"
-	class="btn_tab" value="Cohorts" onclick="switch_view('cohort');" /> <input
+	class="btn_tab" value="Cohorts" onclick="sits_block.switch_view('cohort');" /> <input
 	name="tabgroup2" type="submit" id="group_btn" class="btn_tab"
-	value="Groups" onclick="switch_view('group');" /> <!--  <div style="float: right;"><input type="submit" class="macrooption" value="Check blurScreen()" onclick="blurScreen('Testing blurScreen()');"/></div> -->
+	value="Groups" onclick="sits_block.switch_view('group');" /> <!--  <div style="float: right;"><input type="submit" class="macrooption" value="Check blurScreen()" onclick="sits_block.blurScreen('Testing blurScreen()');"/></div> -->
 <div style="float: right;"><input type="submit" class="macrooption"
-	value="Close Cohorts and Groups Interface" onclick="exit();" /></div>
+	value="Close Cohorts and Groups Interface" onclick="sits_block.exit();" /></div>
 </div>
 <!--START OF GROUPS-->
 <div class="mng_groups" id='groups'>
@@ -60,7 +61,7 @@ include('./samis_head.php');?>
 <h5>Step 1: Select a course</h5>
 <form name="samis_add_user_action_form" class="samis_add_user"
 	method="post" action="samis_combo_interface.php"><select
-	id="grp_course" name="grp_course" onChange="set_group_options()"
+	id="grp_course" name="grp_course" onChange="sits_block.set_group_options()"
 	>
 
 	<?php
@@ -90,7 +91,7 @@ include('./samis_head.php');?>
         
         <div id="add_to_existing"><input type="radio" id="grp_radio_exist"
         	name="action" value="add" /> Add to existing group <select
-        	id="select_groups" name="group_reference" onclick="groupexistselect();">
+        	id="select_groups" name="group_reference" onclick="sits_block.groupexistselect();">
         	<!-- populated by js function -->
         </select></div>
         <div id="no_existing_groups" style="display: none"><b>There are no
@@ -100,14 +101,14 @@ include('./samis_head.php');?>
         	style="display: none" /> <input type="radio" id="grp_radio_create"
         	name="action" value="create" /> Create new group <input type="text"
         	name="groupname" id="groupname" value="Enter group name"
-        	onclick="groupnameselect();" /> </span>
+        	onclick="sits_block.groupnameselect();" /> </span>
         <hr />
         </div>
         <br />
         <input id="groupsubmit" name="groupsubmit" type="submit"
-        	onclick="create_or_add_to_group()" value="Create / Add to Group" /> <input
+        	onclick="sits_block.create_or_add_to_group()" value="Create / Add to Group" /> <input
         	id="viewgroups" name="viewgroups" type="submit"
-        	onclick="view_groups_page()" value="Open Groups Page" />
+        	onclick="sits_block.view_groups_page()" value="Open Groups Page" />
         <hr />
         </div>
         <div id="groups_load_message" class="groups_load_message"><img
@@ -121,9 +122,9 @@ include('./samis_head.php');?>
 <!--END OF GROUPS--> <!--START OF COHORTS-->
 <div class="mng_cohort" id="cohorts">
 <div class="pagetitle"><!-- <h4>Manage SAMIS Cohorts</h4>	
-				<input type="submit" class="savechanges" id="btn_cohort_save" value="Save All Changes" disabled=true onclick="commit();" />  -->
-<div class="filter"><input id="course_search_input" type="text"
-	onkeyup="filterCourses(this.value)"></input> Enter part of a course
+				<input type="submit" class="savechanges" id="btn_cohort_save" value="Save All Changes" disabled=true onclick="sits_block.commit();" />  -->
+<div class="filter">
+<input id="course_search_input" type="text" onkeyup="sits_block.filterCourses(this.value)"></input> Enter part of a course
 name or idnumber to filter display</div>
 </div>
 <div id="course_search"></div>
@@ -138,7 +139,7 @@ name or idnumber to filter display</div>
 					{
 					    echo('<div class="course_cont" id="id_' . $cur_course->id  . '">' ."\n");
 					    echo('	<div id = "id_' . $cur_course->id  . '_title" class="course_title">');
-					    echo('		<a id="id_' . $cur_course->id . '_plus" class="expand" onclick="loadMappingsForCourse(' . $cur_course->id . ');">' ."\n");
+					    echo('		<a id="id_' . $cur_course->id . '_plus" class="expand" onclick="sits_block.loadMappingsForCourse(' . $cur_course->id . ');">' ."\n");
 					    echo('			<img id="id_' . $cur_course->id . '_plus_img" class="toggle" src="./images/switch_plus.gif" alt="Toggle visibility" />' ."\n");
 					    echo('		</a>' ."\n");
 					    echo('		<b>' . $cur_course->fullname . '</b><div style="display: none;">' .$cur_course->shortname . ' / ' . $cur_course->idnumber . "</div>\n");
@@ -151,13 +152,13 @@ name or idnumber to filter display</div>
 					    echo('<div id= "id_' . $cur_course->id . '_control_container">');
 					    echo('<div id= "id_' .  $cur_course->id . '_controls" class="controls" style="display: none;">');
 					    echo('      <input type="submit" class="save_btn" id="id_' . $cur_course->id . '_save"  value="Save Changes" '
-					    . 'onclick="save_course_changes(' . $cur_course->id . ');"/>' ."\n");
+					    . 'onclick="sits_block.save_course_changes(' . $cur_course->id . ');"/>' ."\n");
 					    echo('		<input type="submit" class="add" id="id_' . $cur_course->id . '_addbut"  value="Add Cohort" '
-					    . 'onclick="addModuleClick(' . $cur_course->id . ');" />' ."\n");
+					    . 'onclick="sits_block.addModuleClick(' . $cur_course->id . ');" />' ."\n");
 					    echo('		<input type="submit" class="add" id="id_' . $cur_course->id . '_sync"  value="Sync Course" '
-					    . 'onclick="sync_course(' . $cur_course->id . ');" />' ."\n");
+					    . 'onclick="sits_block.sync_course(' . $cur_course->id . ');" />' ."\n");
 					    echo('        <input type="submit" class="add" id="id_' . $cur_course->id . '_view"  value="View Enrolled Users" '
-					    . 'onclick="view_course(' . $cur_course->id . ');" />' ."\n");
+					    . 'onclick="sits_block.view_course(' . $cur_course->id . ');" />' ."\n");
 					    echo('</div>' ."\n");
 					    echo('<div id="id_' .  $cur_course->id . '_loading" class="controls" style="display: none;">');
 					    echo('<div id="id_' .  $cur_course->id . '_load_message" class="load_message"></div>');
@@ -176,5 +177,6 @@ name or idnumber to filter display</div>
 	name="message_submit_form_value" type="text" value="error" /> <input
 	id="courseid" name="courseid" value="<?php echo($courseid); ?>" /></form>
 </div>
+<script>YAHOO.util.Event.onDOMReady(sits_block.user_init);</script>
 </body>
 </html>

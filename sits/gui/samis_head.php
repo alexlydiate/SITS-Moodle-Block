@@ -14,6 +14,9 @@ if(preg_match('/IE 7/', $_SERVER['HTTP_USER_AGENT'])){
 	href="<?php echo $CFG->wwwroot ?>/theme/bath/styles.php" />
 <link rel="stylesheet" type="text/css"
 	href="./styles/samis_user_interface.css" />
+<!--CSS file (default YUI Sam Skin) -->
+<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.9.0/build/calendar/assets/skins/sam/calendar.css">
+ 
 <!--[if IE 6]>
 			<link rel="stylesheet" type="text/css" href="<?php echo $CFG->wwwroot ?>/theme/standard/styles_ie6.css" />
 			<link rel="stylesheet" type="text/css" href="<?php echo $CFG->wwwroot ?>/theme/bath/styles_ie7.css" />
@@ -45,7 +48,12 @@ if(preg_match('/IE 7/', $_SERVER['HTTP_USER_AGENT'])){
 <!-- YUI Element, depends on DOM -->
 <script
 	src="http://yui.yahooapis.com/2.8.2r1/build/element/element-min.js"></script>
-<script src="./scripts/samis_user_interface.js" type="text/javascript"></script>
+<script src="./scripts/samis_interface_lib.js" type="text/javascript"></script>
+
+<!-- Dependencies -->
+<script src="http://yui.yahooapis.com/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js"></script>
+<!-- Combo calendar and event listener -->
+<script type="text/javascript" src="http://yui.yahooapis.com/combo?2.9.0/build/yahoo-dom-event/yahoo-dom-event.js&2.9.0/build/calendar/calendar-min.js"></script>
 <!--  end JS -->
 <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
 <title>Manage SAMIS Cohorts</title>

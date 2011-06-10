@@ -88,6 +88,9 @@ class sits_client_request {
             case 'create_group':
                 $this->create_group();
                 break;
+            case 'get_periods':
+                $this->get_periods();
+                break;
         }
     }
 
@@ -561,6 +564,32 @@ EOXML;
                 break;
         }
         return $xml;
+    }
+    
+    private function get_periods(){
+        $returnXML = <<<EOXML
+<?xml version='1.0' standalone='yes'?><perioddoc>
+EOXML;
+        $periods = get_records('sits_period');
+        if(is_array($periods)){
+            $periodXML = '<period>';
+            $periodXML .= '<code>%s</code>';
+            $periodXML .= '<acyear>%s</acyear>';
+            $periodXML .= '<start>%s</start>';
+            $periodXML .= '<end>%s</end>';
+            $periodXML .= '<revert>%s</revert>';
+            $periodXML .= '</period>';
+            foreach($periods as $period){
+                $returnXML .= sprintf($periodXML, $period->period_code,
+                                                $period->acyear,
+                                                substr($period->start_date, 0, -9),
+                                                substr($period->end_date, 0, -9),
+                                                $period->revert);
+            }            
+        }
+        $returnXML .= '</perioddoc>';
+        $this->content_type = 'text/xml';
+        $this->response = $returnXML;
     }
 }
 ?>

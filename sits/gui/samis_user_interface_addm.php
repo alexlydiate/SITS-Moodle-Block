@@ -13,7 +13,7 @@ $periodcode_values = array('S1','S2','AY','T1','T2','T3');
 <form class="addm" action="self">
 <fieldset><legend>Cohort</legend>
 <p><label>Cohort Type</label> <select id="select_moduletype"
-	name="moduletype" onchange="switchModuleType()">
+	name="moduletype" onchange="sits_block.switchModuleType()">
 	<option value="unit" selected="selected">Unit</option>
 	<option value="programme">Programme</option>
 </select> <br />
@@ -87,7 +87,7 @@ echo('<option value="S1" selected="selected">Semester 1</option>'
 
 <fieldset class="course_detail"><legend>Unenrolment Conditions</legend>
 <p><label for="method">Method</label> <?php
-echo('<select id="id_add_map_unenrol_type" onchange="toggle_dates(' . "'add'" . ')";">');
+echo('<select id="id_add_map_unenrol_type" onchange="sits_block.toggle_dates(' . "'add'" . ')";">');
 echo('<option value="auto">Synchronise with SAMIS</option>');
 echo('<option value="specified">Specified Date</option>');
 echo('<option value="manual">Manual</option>');
@@ -101,7 +101,7 @@ echo('<select class="date_box year" id="id_add_map_year">' . get_years($date) . 
 ?></p>
 </fieldset>
 <p id="id_add_cohort_buttons"><input type="submit" class="add"
-	value="Add Cohort" onclick="add_module_to_mappings()" /> <input
+	value="Add Cohort" onclick="sits_block.add_module_to_mappings()" /> <input
 	type="submit" class="cancel" value="Cancel" onclick="overlay.hide();" />
 </p>
-<script type="text/javascript">switchModuleType();</script></form>
+<script type="text/javascript">sits_block.switchModuleType();</script></form>

@@ -38,7 +38,7 @@ if(has_capability('moodle/course:manageactivities', $context))
 {
     //Here is the business end of things
     $sits_sync = new sits_sync();
-    $user_courses = get_my_courses($USER->id);
+    $user_courses = get_my_courses($USER->id, 'fullname ASC,visible DESC,sortorder ASC');
     $course_is_tutor_on = array();
 
     foreach($user_courses as $cur_course)

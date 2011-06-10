@@ -1,25 +1,28 @@
 /* Copyright Alex Lydiate 2011 Onwards */
+var sits_block = {};
 
-var SUCCESS = '0';
-var ERROR_COHORT_FAILED_SITS_VALIDATION = '1';
-var ERROR_FAILED_TO_CREATE_MAPPING = '2';
-var ERROR_MAPPING_ALREADY_EXISTS = '3';
-var ERROR_FAILED_TO_DELETE_MAPPING = '4';
-var ERROR_FAILED_TO_RETRIEVE_MAPPING = '5';
-var ERROR_FAILED_TO_INSTANTIATE_COHORT = '6';
-var FAILED_TO_CREATE_GROUP ='7';
-var FAILED_TO_ADD_TO_GROUP ='8';
+sits_block.SUCCESS = '0';
+sits_block.ERROR_COHORT_FAILED_SITS_VALIDATION = '1';
+sits_block.ERROR_FAILED_TO_CREATE_MAPPING = '2';
+sits_block.ERROR_MAPPING_ALREADY_EXISTS = '3';
+sits_block.ERROR_FAILED_TO_DELETE_MAPPING = '4';
+sits_block.ERROR_FAILED_TO_RETRIEVE_MAPPING = '5';
+sits_block.ERROR_FAILED_TO_INSTANTIATE_COHORT = '6';
+sits_block.FAILED_TO_CREATE_GROUP ='7';
+sits_block.FAILED_TO_ADD_TO_GROUP ='8';
 
-var changes = [];
-var appendCount = [];
-var totalMaps = [];
-var mapValueHasChanged = [];
-var optionElements;
-var overlay;
+sits_block.changes = [];
+sits_block.appendCount = [];
+sits_block.totalMaps = [];
+sits_block.mapValueHasChanged = [];
+sits_block.optionElements;
+sits_block.overlay;
 
-var sUrl = location.protocol + '//' + location.hostname + '/blocks/sits/gui/client_async_request.php';
+sits_block.totalPeriods;
+sits_block.periodAppendCount;
+sits_block.sUrl = location.protocol + '//' + location.hostname + '/blocks/sits/gui/client_async_request.php';
 
-function isEven(int){
+sits_block.isEven = function(int){
 	if(int%2 === 0){
 		return true;
 	}else{
@@ -27,32 +30,32 @@ function isEven(int){
 	}
 }
 
-function validate_bucs_id(bucs_id){
+sits_block.validate_bucs_id = function(bucs_id){
 	var patt = /^([a-z0-9])/i;
 	if(bucs_id.match(patt) === null){
 		return false;
 	}else{
 		return true;
 	}
-}
+};
 
-function getTextContent(element) {
+sits_block.getTextContent = function(element) {
 	if (window.DOMParser) {
 		return element.textContent;
 	} else {
 		return element.innerText;
 	}
-}
+};
 
-function setTextContent(element, content) {
+sits_block.setTextContent = function(element, content) {
 	if (window.DOMParser) {
 		element.textContent = content;
 	} else {
 		element.innerText = content;
 	}
-}
+};
 
-function loadXMLString(txt){
+sits_block.loadXMLString = function(txt){
 	if (window.DOMParser){
 		  parser=new DOMParser();
 		  xmlDoc=parser.parseFromString(txt,"text/xml");
@@ -62,9 +65,15 @@ function loadXMLString(txt){
 		  xmlDoc.loadXML(txt);
 		}
 	return xmlDoc;
-}
+};
 
-function blurScreen(txt){
+sits_block.loadDate = function(dateString){
+	var dateArray;
+	dateArray = dateString.split('-');
+	return new Date(dateArray[0],dateArray[1] - 1,dateArray[2]);	
+};
+
+sits_block.blurScreen = function(txt){
 	var blurDiv = document.createElement("div");
 	blurDiv.id = "blurDiv";
 	blurDiv.style.cssText = "position:absolute; top:0; right:0; width:" + screen.width + "px; height:auto; background-color: #ffffff; opacity:0.5; filter:alpha(opacity=50)";
@@ -91,94 +100,94 @@ function blurScreen(txt){
 	var bodyElement = YAHOO.util.Dom.get('canvas');
 	bodyElement.appendChild(blurDiv);
 	bodyElement.appendChild(layerDiv);
-}
+};
 
-function killBlur(){
+sits_block.killBlur = function(){
 	var layerDiv = YAHOO.util.Dom.get("layerDiv");
 	layerDiv.parentNode.removeChild(layerDiv);
 	var blurDiv = YAHOO.util.Dom.get("blurDiv");
 	blurDiv.parentNode.removeChild(blurDiv);
-}
+};
 
-function loaderToLoad(courseid){
+sits_block.loaderToLoad = function(courseid){
 	//Switch loader to loading gif
 	var plusButtonElement, plusButtonImage;
 	plusButtonElement = YAHOO.util.Dom.get('id_' + courseid + '_plus');
 	plusButtonElement.removeAttribute('href');
 	plusButtonImage = YAHOO.util.Dom.get('id_' + courseid + '_plus_img');
 	YAHOO.util.Dom.setAttribute(plusButtonImage, 'src', './images/liloader.gif');
-}
+};
 
-function loaderToClose(courseid){
+sits_block.loaderToClose = function(courseid){
 	//Switch loader to close button
 	var plusButtonImage, plusButtonElement;
 	plusButtonImage = YAHOO.util.Dom.get('id_' + courseid + '_plus_img');
 	YAHOO.util.Dom.setAttribute(plusButtonImage, 'src', './images/switch_minus.gif');
 	plusButtonElement = YAHOO.util.Dom.get('id_' + courseid + '_plus');
-	YAHOO.util.Dom.setAttribute(plusButtonElement, 'onclick', 'hideMappingsForCourse(' + courseid + ')');
-}
+	YAHOO.util.Dom.setAttribute(plusButtonElement, 'onclick', 'sits_block.hideMappingsForCourse(' + courseid + ')');
+};
 
-function loaderToOpen(courseid){
+sits_block.loaderToOpen = function(courseid){
 	//Switch loader to open button
 	var minusButtonElement, minusButtonImage;
 	minusButtonElement = YAHOO.util.Dom.get('id_' + courseid + '_plus');
 	YAHOO.util.Dom.setAttribute(minusButtonElement, 'id', 'id_' + courseid + '_plus');
-	YAHOO.util.Dom.setAttribute(minusButtonElement, 'onclick', 'loadMappingsForCourse(' + courseid + ')');
+	YAHOO.util.Dom.setAttribute(minusButtonElement, 'onclick', 'sits_block.loadMappingsForCourse(' + courseid + ')');
 	minusButtonImage = YAHOO.util.Dom.get('id_' + courseid + '_plus_img');
 	YAHOO.util.Dom.setAttribute(minusButtonImage, 'src', './images/switch_plus.gif');
-}
+};
 
-function showControls(courseid){
+sits_block.showControls = function(courseid){
 	var controlsElement = YAHOO.util.Dom.get('id_' + courseid + '_controls');
 	YAHOO.util.Dom.setAttribute(controlsElement, 'style', 'display:block;');
-}
+};
 
-function hideControls(courseid){
+sits_block.hideControls = function(courseid){
 	var controlsElement = YAHOO.util.Dom.get('id_' + courseid + '_controls');
 	YAHOO.util.Dom.setAttribute(controlsElement, 'style', 'display:none;');
-}
+};
 
-function showLoading(courseid, txt){
+sits_block.showLoading = function(courseid, txt){
 	var loadMessageElement, loadingElement;
-	loaderToLoad(courseid);
+	sits_block.loaderToLoad(courseid);
 	loadMessageElement = YAHOO.util.Dom.get('id_' + courseid + '_load_message');
 	loadingElement = YAHOO.util.Dom.get('id_' + courseid + '_loading');
-	setTextContent(loadMessageElement, txt);
+	sits_block.setTextContent(loadMessageElement, txt);
 	YAHOO.util.Dom.setAttribute(loadingElement, 'style', 'display:block;');
-}
+};
 
-function hideLoading(courseid, loaderClose){
+sits_block.hideLoading = function(courseid, loaderClose){
 	var loadMessageElement, loadingElement;
 	if(loaderClose){
-		loaderToClose(courseid);
+		sits_block.loaderToClose(courseid);
 	}else{
-		loaderToOpen(courseid);
+		sits_block.oaderToOpen(courseid);
 	}
 	loadMessageElement = YAHOO.util.Dom.get('id_' + courseid + '_load_message');
 	loadingElement = YAHOO.util.Dom.get('id_' + courseid + '_loading');
-	setTextContent(loadMessageElement, '');
+	sits_block.setTextContent(loadMessageElement, '');
 	YAHOO.util.Dom.setAttribute(loadingElement, 'style', 'display:none');
-}
+};
 
-function showGroupLoading(txt){
+sits_block.showGroupLoading = function(txt){
 	var loadingElement, textElement, controlsElement;
 	controlsElement = YAHOO.util.Dom.get('group_controls');
 	loadingElement = YAHOO.util.Dom.get('groups_load_message');
 	textElement = YAHOO.util.Dom.get('groups_load_message_text');
-	setTextContent(textElement, txt);
+	sits_block.setTextContent(textElement, txt);
 	YAHOO.util.Dom.setAttribute(loadingElement, 'style', 'display:block;');
 	YAHOO.util.Dom.setAttribute(controlsElement, 'style', 'display:none;');
-}
+};
 
-function hideGroupLoading(){
+sits_block.hideGroupLoading = function(){
 	var loadingElement, controlsElement;
 	controlsElement = YAHOO.util.Dom.get('group_controls');
 	loadingElement = YAHOO.util.Dom.get('groups_load_message');
 	YAHOO.util.Dom.setAttribute(loadingElement, 'style', 'display:none;');
 	YAHOO.util.Dom.setAttribute(controlsElement, 'style', 'display:block;');
-}
+};
 
-function showGroupNoMaps(){
+sits_block.showGroupNoMaps = function(){
 	var mappingElement = YAHOO.util.Dom.get('select_mappings');
 	var noMapElement = YAHOO.util.Dom.get('grp_no_maps');
 	var groupSubmitElement = YAHOO.util.Dom.get('groupsubmit');
@@ -194,9 +203,9 @@ function showGroupNoMaps(){
 	groupSelectElement.disabled=true;
 	YAHOO.util.Dom.setAttribute(mappingElement,'style', 'display:none;');
 	YAHOO.util.Dom.setAttribute(noMapElement,'style', 'display:block;');
-}
+};
 
-function hideGroupNoMaps(){
+sits_block.hideGroupNoMaps = function(){
 	var mappingElement = YAHOO.util.Dom.get('select_mappings');
 	var noMapElement = YAHOO.util.Dom.get('grp_no_maps');
 	var groupSubmitElement = YAHOO.util.Dom.get('groupsubmit');
@@ -212,23 +221,23 @@ function hideGroupNoMaps(){
 	groupSelectElement.disabled=false;
 	YAHOO.util.Dom.setAttribute(mappingElement,'style', 'display:block;');
 	YAHOO.util.Dom.setAttribute(noMapElement,'style', 'display:none;');
-}
+};
 
-function swapControlsForLoadMessage(courseid, txt){
-	hideControls(courseid);
-	showLoading(courseid, txt);
-}
+sits_block.swapControlsForLoadMessage = function(courseid, txt){
+	sits_block.hideControls(courseid);
+	sits_block.showLoading(courseid, txt);
+};
 
-function swapLoadMessageForControls(courseid, loaderToClose){
-	if(loaderToClose){
-		hideLoading(courseid, true);
+sits_block.swapLoadMessageForControls = function(courseid, closeLoader){
+	if(closeLoader){
+		sits_block.hideLoading(courseid, true);
 	}else{
-		hideLoading(courseid, false);
+		sits_block.hideLoading(courseid, false);
 	}
-	showControls(courseid);
-}
+	sits_block.showControls(courseid);
+};
 
-function showAddingCohortLoader(){
+sits_block.showAddingCohortLoader = function(){
 	var element;
 	element = YAHOO.util.Dom.get('add_cohort_title');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:none');
@@ -236,9 +245,9 @@ function showAddingCohortLoader(){
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:block');
 	element = YAHOO.util.Dom.get('id_add_cohort_buttons');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:none');
-}
+};
 
-function showAddingCohortTitle(){	
+sits_block.showAddingCohortTitle = function(){	
 	var element;
 	element = YAHOO.util.Dom.get('add_cohort_title');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:block');
@@ -246,25 +255,25 @@ function showAddingCohortTitle(){
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:none');
 	element = YAHOO.util.Dom.get('id_add_cohort_buttons');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:block');
-}
+};
 
-function showNoCurrentGroups(){
+sits_block.showNoCurrentGroups = function(){
 	var element;
 	element = YAHOO.util.Dom.get('add_to_existing');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:none');
 	element = YAHOO.util.Dom.get('no_existing_groups');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:block');
-}
+};
 
-function showAddToExistingGroups(){
+sits_block.showAddToExistingGroups = function(){
 	var element;
 	element = YAHOO.util.Dom.get('add_to_existing');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:block');
 	element = YAHOO.util.Dom.get('no_existing_groups');
 	YAHOO.util.Dom.setAttribute(element, 'style', 'display:none');
-}
+};
 
-function setDatesDisabledAttribute(mapId, disabled){
+sits_block.setDatesDisabledAttribute = function(mapId, disabled){
 	var element;
 	element = YAHOO.util.Dom.get('id_' + mapId + '_map_day');
 	element.disabled = disabled;
@@ -272,9 +281,9 @@ function setDatesDisabledAttribute(mapId, disabled){
 	element.disabled = disabled;
 	element = YAHOO.util.Dom.get('id_' + mapId + '_map_year');
 	element.disabled = disabled;
-}
+};
 
-function createMappingXML(course_id, sits_code, type, academic_year, period_code, year_group,
+sits_block.createMappingXML = function(course_id, sits_code, type, academic_year, period_code, year_group,
 		unenrol, date){	
 	var XML;
 	XML = "<?xml version='1.0' standalone='yes'?>";
@@ -302,9 +311,9 @@ function createMappingXML(course_id, sits_code, type, academic_year, period_code
 	}	
 	XML += '</map>';	
 	return XML;	
-}
+};
 
-function toggle_dates(mapId)
+sits_block.toggle_dates = function(mapId)
 {
 	var element = YAHOO.util.Dom.get('id_' + mapId + '_map_unenrol_type');
 	var disabled;
@@ -314,10 +323,10 @@ function toggle_dates(mapId)
 		disabled = true;
 	}
 	
-	setDatesDisabledAttribute(mapId, disabled);
-}
+	sits_block.setDatesDisabledAttribute(mapId, disabled);
+};
 
-function get_years(date)
+sits_block.get_years = function(date)
 {
     var start_year = 1970;
     var count;
@@ -335,9 +344,9 @@ function get_years(date)
         }
     }
     return years_html;
-}
+};
 
-function get_months(date)
+sits_block.get_months = function(date)
 {
     var months_html = '';
     var current_month;
@@ -355,9 +364,9 @@ function get_months(date)
         }
     }
     return months_html;
-}
+};
 
-function get_days(date)
+sits_block.get_days = function(date)
 {
     days_html = '';
     var count;
@@ -374,9 +383,9 @@ function get_days(date)
         }
     }
     return days_html;
-}
+};
 
-function get_unenrolment_types(mapping)
+sits_block.get_unenrolment_types = function(mapping)
 {
 	var specified_value = mapping.getElementsByTagName("specified")[0].firstChild.data;
 	var manual_value = mapping.getElementsByTagName("manual")[0].firstChild.data;
@@ -426,9 +435,9 @@ function get_unenrolment_types(mapping)
 	    }
 	}	
     return types_html;
-}
+};
 
-function appendMappingToPage(mapping, newMap){
+sits_block.appendMappingToPage = function(mapping, newMap){
 	
 	var html, yeargroup, periodcode;	
 	var sitscode = mapping.getElementsByTagName("sits_code")[0].firstChild.data;
@@ -446,11 +455,11 @@ function appendMappingToPage(mapping, newMap){
 	}	
 	var default_map = mapping.getElementsByTagName("default")[0].firstChild.data;	
 	var id = mapping.getElementsByTagName("id")[0].firstChild.data;	
-	var date = new Date(mapping.getElementsByTagName("end_date")[0].firstChild.data);
-	var year_options = get_years(date);
-	var month_options = get_months(date);
-	var day_options = get_days(date);
-	var unenrol_type = get_unenrolment_types(mapping);	
+	var date = sits_block.loadDate(mapping.getElementsByTagName("end_date")[0].firstChild.data);
+	var year_options = sits_block.get_years(date);
+	var month_options = sits_block.get_months(date);
+	var day_options = sits_block.get_days(date);
+	var unenrol_type = sits_block.get_unenrolment_types(mapping);	
 	html = '<p class="course_detail" id="id_' + id + '">';
 	if(newMap === true){
 		html += '<strong class="mpg_category">COHORT SAVED: </strong>';
@@ -464,24 +473,24 @@ function appendMappingToPage(mapping, newMap){
 	html += '<strong class="hiddenfield">' + id + '</strong>';
 	html += '<br/>';
 	html += '<span class="unenrol-selects"><label for="id_' + id + '"><span class="mpg_category">Unenrol Method: </span></label>';
-	html += '<select id="id_' + id + '_map_unenrol_type" class="map_select" onchange="toggle_dates(' + id + ');enable_save(' + course_id + '); mapValueChange(' + id + ')">';
+	html += '<select id="id_' + id + '_map_unenrol_type" class="map_select" onchange="sits_block.toggle_dates(' + id + ');sits_block.enable_save(' + course_id + '); sits_block.mapValueChange(' + id + ')">';
 	html += unenrol_type;
 	html += '</select>';
 	html += '</span>';
 	html += '<span class="date-selects"><span class="mpg_category"> Date: </span>';
-	html += '<select class="day" id="id_' + id + '_map_day" class="map_select" onchange="enable_save(' + course_id + '); mapValueChange(' + id + ')">';
+	html += '<select class="day" id="id_' + id + '_map_day" class="map_select" onchange="sits_block.enable_save(' + course_id + '); sits_block.mapValueChange(' + id + ')">';
 	html += day_options;
 	html += '</select>';
-	html += '<select class="month" id="id_' + id + '_map_month"  class="map_select" onchange="enable_save(' + course_id + '); mapValueChange(' + id + ')">';
+	html += '<select class="month" id="id_' + id + '_map_month"  class="map_select" onchange="sits_block.enable_save(' + course_id + '); sits_block.mapValueChange(' + id + ')">';
 	html += month_options;
 	html += '</select>';
-	html += '<select class="year" id="id_' + id + '_map_year" class="map_select" onchange="enable_save(' + course_id + '); mapValueChange(' + id + ')">';
+	html += '<select class="year" id="id_' + id + '_map_year" class="map_select" onchange="sits_block.enable_save(' + course_id + '); sits_block.mapValueChange(' + id + ')">';
 	html += year_options;
 	html += '</select>';
 	if(default_map === '0'){
-		html += '&nbsp&nbsp<input type="submit" class="map_submit" id="id_' + id + '_map_remove"  value ="Remove Cohort" onclick="toggle_delete(this,' + id + '); enable_save(' + course_id + ')"/>';
+		html += '&nbsp&nbsp<input type="submit" class="map_submit" id="id_' + id + '_map_remove"  value ="Remove Cohort" onclick="sits_block.toggle_delete(this,' + id + '); sits_block.enable_save(' + course_id + ')"/>';
 	}else{
-		html += '&nbsp&nbsp<input type="submit" style="display:none" class="map_submit" id="id_' + id + '_map_remove"  value ="Remove Cohort" onclick="toggle_delete(this,' + id + '); enable_save(' + course_id + ')"/>';
+		html += '&nbsp&nbsp<input type="submit" style="display:none" class="map_submit" id="id_' + id + '_map_remove"  value ="Remove Cohort" onclick="sits_block.toggle_delete(this,' + id + '); sits_block.enable_save(' + course_id + ')"/>';
 		html += '<b>&nbsp&nbsp Default</b>';
 	}
 	html += '</span>';
@@ -490,7 +499,7 @@ function appendMappingToPage(mapping, newMap){
 	if(newMap === true){
 		mapDiv.style.cssText = 'background-color: #BAD897;';
 	}else{
-		if(isEven(appendCount[course_id])){
+		if(sits_block.isEven(sits_block.appendCount[course_id])){
 			mapDiv.style.cssText = 'background-color: #DFDFDF;';
 		}else{
 			mapDiv.style.cssText = 'background-color: #EFEFEF;';
@@ -500,19 +509,19 @@ function appendMappingToPage(mapping, newMap){
 	mapDiv.id = 'id_' + id + '_map';
 	mapDiv.className = id;
 	YAHOO.util.Dom.get('id_' + course_id + '_mappings').appendChild(mapDiv);
-	toggle_dates(id);
-	appendCount[course_id]++;
-	if(appendCount[course_id] === totalMaps[course_id]){
-		showControls(course_id);
-		loaderToClose(course_id);
-		if(changes[course_id] !== true){
+	sits_block.toggle_dates(id);
+	sits_block.appendCount[course_id]++;
+	if(sits_block.appendCount[course_id] === sits_block.totalMaps[course_id]){
+		sits_block.showControls(course_id);
+		sits_block.loaderToClose(course_id);
+		if(sits_block.changes[course_id] !== true){
 			var saveElement = YAHOO.util.Dom.get('id_' + course_id + '_save');
 			YAHOO.util.Dom.setAttribute(saveElement, 'disabled', 'disabled');
 		}
 	}
-}
+};
 
-function appendNoMapsToCourseDiv(courseid){
+sits_block.appendNoMapsToCourseDiv = function(courseid){
 	var noMapDiv = document.createElement("div");
 	html = '<p class="course_detail" id="id_' + courseid + '">';
 	html += 'No current mappings exist for this course.';
@@ -521,20 +530,20 @@ function appendNoMapsToCourseDiv(courseid){
 	noMapDiv.id = 'id_' + courseid + '_no_maps';
 	var element = YAHOO.util.Dom.get('id_' + courseid + '_mappings');
 	element.appendChild(noMapDiv);
-	showControls(courseid);
-	loaderToClose(courseid);
+	sits_block.showControls(courseid);
+	sits_block.loaderToClose(courseid);
 	var saveElement = YAHOO.util.Dom.get('id_' + courseid + '_save');
 	YAHOO.util.Dom.setAttribute(saveElement, 'disabled', 'disabled');	
-}
+};
 
-function removeNoMapsToCourseDiv(courseid){
+sits_block.removeNoMapsToCourseDiv = function(courseid){
 	var noMapElement = YAHOO.util.Dom.get('id_' + courseid + '_no_maps');
 	if(noMapElement != null){
 		noMapElement.parentNode.removeChild(noMapElement);
 	}
-}
+};
 
-function appendMappingToGroupsPage(mapping){
+sits_block.appendMappingToGroupsPage = function(mapping){
 	var sitscode = mapping.getElementsByTagName("sits_code")[0].firstChild.data;
 	var acyear = mapping.getElementsByTagName("acyear")[0].firstChild.data;
 	var course_id = mapping.getElementsByTagName("course_id")[0].firstChild.data;
@@ -551,8 +560,8 @@ function appendMappingToGroupsPage(mapping){
 	//var date = new Date(mapping.getElementsByTagName("end_date")[0].firstChild.data);
 
 	option = document.createElement('option');
-	setTextContent(option, 'SAMIS code:' + sitscode + ', Academic Year: ' + acyear + ' Period: ' + periodcode + ', Year of Study: ' + yeargroup);
-	if(isEven(appendCount[course_id])){
+	sits_block.setTextContent(option, 'SAMIS code:' + sitscode + ', Academic Year: ' + acyear + ' Period: ' + periodcode + ', Year of Study: ' + yeargroup);
+	if(sits_block.isEven(sits_block.appendCount[course_id])){
 		option.style.cssText = 'background-color: #DFDFDF;';
 	}else{
 		option.style.cssText = 'background-color: #EFEFEF;';
@@ -560,13 +569,13 @@ function appendMappingToGroupsPage(mapping){
 	option.id = id;
 	element = YAHOO.util.Dom.get('select_mappings');
 	element.appendChild(option);
-	appendCount[course_id]++;
-	if(appendCount[course_id] === totalMaps[course_id]){
-		hideGroupLoading();
+	sits_block.appendCount[course_id]++;
+	if(sits_block.appendCount[course_id] === sits_block.totalMaps[course_id]){
+		sits_block.hideGroupLoading();
 	}
-}
+};
 
-function appendNoMapsToGroupsPage(courseid){
+sits_block.appendNoMapsToGroupsPage = function(courseid){
 	var noMapDiv = document.createElement("div");
 	var mappingElement = YAHOO.util.Dom.get('steps_two_and_three');
 	var noMapElement = YAHOO.util.Dom.get('grp_no_maps');
@@ -574,20 +583,20 @@ function appendNoMapsToGroupsPage(courseid){
 	html = '<p class="course_detail" id="' + courseid + '">';
 	html += 'No current mappings exist for this course.';
 	html +='</p>';
-	setTextContent(noMapDiv, html);	
+	sits_block.setTextContent(noMapDiv, html);	
 	YAHOO.util.Dom.setAttribute(mappingElement,'style', 'display:none;');
 	YAHOO.util.Dom.setAttribute(noMapElement,'style', 'display:block;');
-}
+};
 
-function appendGroupToSelect(groupXml){
+sits_block.appendGroupToSelect = function(groupXml){
 	var select = YAHOO.util.Dom.get('select_groups');
 	var option = document.createElement("option");
-	setTextContent(option, groupXml.getElementsByTagName("name")[0].firstChild.data);
+	sits_block.setTextContent(option, groupXml.getElementsByTagName("name")[0].firstChild.data);
 	option.value = groupXml.getElementsByTagName("id")[0].firstChild.data;
 	select.appendChild(option);
-}
+};
 
-function asyncRequest(op, xml){	
+sits_block.asyncRequest = function(op, xml){	
 
 	var responseSuccess;
 	var i, n, errors, cid, xmlElements, xmlDoc, deleted, updated, message, getMapXML, srcXmlDoc, transaction, gid, courses, delElement;
@@ -597,41 +606,41 @@ function asyncRequest(op, xml){
 			    responseSuccess = function(o) {
 				if(o.responseText.match(/xml version/)){
 					//Got an XML doc returned, must be a success				
-					xmlDoc = loadXMLString(o.responseText);
+					xmlDoc = sits_block.loadXMLString(o.responseText);
 					cid = xmlDoc.getElementsByTagName("course_id")[0].firstChild.data;
 					xmlElements = xmlDoc.getElementsByTagName("map");
-					totalMaps[cid] = xmlElements.length;
-					appendCount[cid] = 0;
+					sits_block.totalMaps[cid] = xmlElements.length;
+					sits_block.appendCount[cid] = 0;
 					if(xmlElements.length > 0){
-						removeNoMapsToCourseDiv(cid);
-						appendMappingToPage(xmlElements[0], true);						
+						sits_block.removeNoMapsToCourseDiv(cid);
+						sits_block.appendMappingToPage(xmlElements[0], true);						
 					}
-					showAddingCohortTitle();
-					overlay.hide();
+					sits_block.showAddingCohortTitle();
+					sits_block.overlay.hide();
 				}else{
 					switch(o.responseText){
-						case ERROR_COHORT_FAILED_SITS_VALIDATION:
-							showAddingCohortTitle();
+						case sits_block.ERROR_COHORT_FAILED_SITS_VALIDATION:
+							sits_block.showAddingCohortTitle();
 							alert('The cohort you have defined does not exist.  Please review and try again.');
 							YAHOO.util.Dom.get('samis-module').activate();
 						break;
-						case ERROR_FAILED_TO_INSTANTIATE_COHORT:
-							showAddingCohortTitle();
+						case sits_block.ERROR_FAILED_TO_INSTANTIATE_COHORT:
+							sits_block.showAddingCohortTitle();
 							alert('An error has meant the cohort you have defined has not been recognised.  Please contact an administrator.');
 							YAHOO.util.Dom.get('samis-module').activate();
 						break;
-						case ERROR_FAILED_TO_CREATE_MAPPING:
-							showAddingCohortTitle();
+						case sits_block.ERROR_FAILED_TO_CREATE_MAPPING:
+							sits_block.showAddingCohortTitle();
 							alert('The application failed to create the mapping.  Please contact an administrator');
 							YAHOO.util.Dom.get('samis-module').activate();
 						break;
-						case ERROR_MAPPING_ALREADY_EXISTS:
-							showAddingCohortTitle();
+						case sits_block.ERROR_MAPPING_ALREADY_EXISTS:
+							sits_block.showAddingCohortTitle();
 							alert('This mapping already exists.');
 							YAHOO.util.Dom.get('samis-module').activate();
 						break;
 						default:
-							showAddingCohortTitle();
+							sits_block.showAddingCohortTitle();
 							alert('An unidentified error has occured.  Please contact an administrator');
 						break;
 					}
@@ -640,7 +649,7 @@ function asyncRequest(op, xml){
 		break;
 		case 'batch':
 			    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);				
+				xmlDoc = sits_block.loadXMLString(o.responseText);				
 				errors = xmlDoc.getElementsByTagName("error");
 				courses = xmlDoc.getElementsByTagName("course_id");
 				deleted = xmlDoc.getElementsByTagName("deleted");
@@ -656,18 +665,18 @@ function asyncRequest(op, xml){
 				    delElement.parentNode.removeChild(delElement);
 			    }
 				for(n=0; n<updated.length; n++){
-			        mapValueHasChanged[updated[n].firstChild.data] = false;
+					sits_block.mapValueHasChanged[updated[n].firstChild.data] = false;
 		        }
 				for (i=0;i<courses.length;i++){
-					//hideMappingsForCourse(courses[i].firstChild.data);
-					disable_save(courses[i].firstChild.data);
-					swapLoadMessageForControls(courses[i].firstChild.data, true);
+					//sits_block.hideMappingsForCourse(courses[i].firstChild.data);
+					sits_block.disable_save(courses[i].firstChild.data);
+					sits_block.swapLoadMessageForControls(courses[i].firstChild.data, true);
 				}	
 			};
 		break;
 		case 'sync':
 			    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);				
+				xmlDoc = sits_block.loadXMLString(o.responseText);				
 				errors = xmlDoc.getElementsByTagName("error");
 				courses = xmlDoc.getElementsByTagName("course_id");
 				if(errors.length > 0){
@@ -676,7 +685,7 @@ function asyncRequest(op, xml){
 					}			
 				}
 				for (i=0;i<courses.length;i++){
-					swapLoadMessageForControls(courses[i].firstChild.data, true);
+					sits_block.swapLoadMessageForControls(courses[i].firstChild.data, true);
 				}
 				
 			};
@@ -684,109 +693,109 @@ function asyncRequest(op, xml){
 		case 'adduser':
 		case 'sync_all':
 			    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);
+				xmlDoc = sits_block.loadXMLString(o.responseText);
 				message = xmlDoc.getElementsByTagName("message");
-				killBlur();
+				sits_block.killBlur();
 				alert(message[0].firstChild.data);
 			};
 		break;
 		case 'get_map_ids':
 			    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);
+				xmlDoc = sits_block.loadXMLString(o.responseText);
 				cid = xmlDoc.getElementsByTagName("cid")[0].firstChild.data;
 				xmlElements = xmlDoc.getElementsByTagName("id");
-				totalMaps[cid] = xmlElements.length;
-				appendCount[cid] = 0;
+				sits_block.totalMaps[cid] = xmlElements.length;
+				sits_block.appendCount[cid] = 0;
 				if(xmlElements.length > 0){
 					for (i=0;i<xmlElements.length;i++){
 						getMapXML = "<?xml version='1.0' standalone='yes'?>";
 						getMapXML += "<map><id>" + xmlElements[i].firstChild.data + "</id></map>"; 
-						asyncRequest('get_map',getMapXML);
+						sits_block.asyncRequest('get_map',getMapXML);
 					}
 				}else{
-					srcXmlDoc = loadXMLString(xml);					
-					appendNoMapsToCourseDiv(srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data);
+					srcXmlDoc = sits_block.loadXMLString(xml);					
+					sits_block.appendNoMapsToCourseDiv(srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data);
 				}
 			};
 		break;
 		case 'get_map':
 			    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);
+				xmlDoc = sits_block.loadXMLString(o.responseText);
 				xmlElements = xmlDoc.getElementsByTagName("map");
 				if(xmlElements.length > 0){
-					appendMappingToPage(xmlElements[0], false);						
+					sits_block.appendMappingToPage(xmlElements[0], false);						
 				}else{
-					srcXmlDoc = loadXMLString(xml);					
-					appendNoMapsToCourseDiv(srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data);
+					srcXmlDoc = sits_block.loadXMLString(xml);					
+					sits_block.appendNoMapsToCourseDiv(srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data);
 				}
 			};
 		break;
 		case 'get_map_ids_group':
 			    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);
+				xmlDoc = sits_block.loadXMLString(o.responseText);
 				cid = xmlDoc.getElementsByTagName("cid")[0].firstChild.data;
 				xmlElements = xmlDoc.getElementsByTagName("id");
-				totalMaps[cid] = xmlElements.length;
-				appendCount[cid] = 0;
+				sits_block.totalMaps[cid] = xmlElements.length;
+				sits_block.appendCount[cid] = 0;
 				if(xmlElements.length > 0){
 					for (i=0;i<xmlElements.length;i++){
 						getMapXML = "<?xml version='1.0' standalone='yes'?>";
 						getMapXML += "<map><id>" + xmlElements[i].firstChild.data + "</id></map>"; 
-						asyncRequest('get_map_group', getMapXML);
+						sits_block.asyncRequest('get_map_group', getMapXML);
 					}
-					hideGroupLoading();
+					sits_block.hideGroupLoading();
 				}else{
-					showGroupNoMaps();
-					hideGroupLoading();
+					sits_block.showGroupNoMaps();
+					sits_block.hideGroupLoading();
 				}
 			};
 		break;
 		case 'get_map_group':
 			    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);
+				xmlDoc = sits_block.loadXMLString(o.responseText);
 				xmlElements = xmlDoc.getElementsByTagName("map");
 				if(xmlElements.length > 0){	
-					appendMappingToGroupsPage(xmlElements[0]);						
+					sits_block.appendMappingToGroupsPage(xmlElements[0]);						
 				}else{
-					showGroupNoMaps();
-					hideGroupLoading();
+					sits_block.showGroupNoMaps();
+					sits_block.hideGroupLoading();
 				}
 			};
 		break;
 		case 'get_groups':
 		    responseSuccess = function(o) {
-				xmlDoc = loadXMLString(o.responseText);
+				xmlDoc = sits_block.loadXMLString(o.responseText);
 				cid = xmlDoc.getElementsByTagName("cid")[0].firstChild.data;
 				xmlElements = xmlDoc.getElementsByTagName("group");
 				if(xmlElements.length > 0){
 					for (i=0;i<xmlElements.length;i++){
-						appendGroupToSelect(xmlElements[i]);
+						sits_block.appendGroupToSelect(xmlElements[i]);
 					}
-					showAddToExistingGroups();
+					sits_block.showAddToExistingGroups();
 				}else{
-					showNoCurrentGroups();
+					sits_block.showNoCurrentGroups();
 				}
 			};
 		break;
 		case 'create_group':
 		    responseSuccess = function(o) {
 				switch(o.responseText){
-				case SUCCESS:
-					srcXmlDoc = loadXMLString(xml);
+				case sits_block.SUCCESS:
+					srcXmlDoc = sits_block.loadXMLString(xml);
 					cid = srcXmlDoc.getElementsByTagName("course_id")[0].firstChild.data;
-					update_group_list(cid);
-					hideGroupLoading();					
+					sits_block.update_group_list(cid);
+					sits_block.hideGroupLoading();					
 				break;
-				case FAILED_TO_CREATE_GROUP:
-					hideGroupLoading();
+				case sits_block.FAILED_TO_CREATE_GROUP:
+					sits_block.hideGroupLoading();
 					alert('An error has meant that the application failed to create the group');
 				break;				
-				case FAILED_TO_ADD_TO_GROUP:
-					hideGroupLoading();
+				case sits_block.FAILED_TO_ADD_TO_GROUP:
+					sits_block.hideGroupLoading();
 					alert('An error has meant that the application failed to add the chosen mapped cohorts to the group');
 				break;
 				default:
-					hideGroupLoading();
+					sits_block.hideGroupLoading();
 					alert('An unidentified error has occured.  Please contact an administrator');
 				break;
 				}
@@ -795,19 +804,34 @@ function asyncRequest(op, xml){
 		case 'add_to_group':
 		    responseSuccess = function(o) {
 				switch(o.responseText){
-				case SUCCESS:
-					hideGroupLoading();
+				case sits_block.SUCCESS:
+					sits_block.hideGroupLoading();
 				break;
-				case FAILED_TO_ADD_TO_GROUP:
-					hideGroupLoading();
+				case sits_block.FAILED_TO_ADD_TO_GROUP:
+					sits_block.hideGroupLoading();
 					alert('An error has meant that the application failed to add the chosen mapped cohorts to the group');			
 					break;
 				default:
-					hideGroupLoading();
+					sits_block.hideGroupLoading();
 					alert('An unidentified error has occured.  Please contact an administrator');
 				break;
 				}
 			};
+		break;
+		case 'get_periods':
+		    responseSuccess = function(o) {
+		    	xmlDoc = sits_block.loadXMLString(o.responseText);
+				xmlElements = xmlDoc.getElementsByTagName("period");
+				sits_block.totalPeriods = xmlElements.length;
+				sits_block.periodAppendCount = 0;
+				if(xmlElements.length > 0){
+					for (i=0;i<xmlElements.length;i++){
+						sits_block.appendPeriod(xmlElements[i]);
+					}
+				}else{			
+					appendNoAlteredPeriods();
+				}
+		    };	
 		break;
 	}
 	 
@@ -820,10 +844,10 @@ function asyncRequest(op, xml){
 	  failure:responseFailure
 	};
 	
-	transaction = YAHOO.util.Connect.asyncRequest('POST', sUrl, callback, 'op=' + op + '&xml=' + escape(xml));
-}
+	transaction = YAHOO.util.Connect.asyncRequest('POST', sits_block.sUrl, callback, 'op=' + op + '&xml=' + escape(xml));
+};
 	
-function create_batch_xml(courseid)
+sits_block.create_batch_xml = function(courseid)
 {	
 	var mapping_id, xml, i, removeButton, day, month, year, type;
 	
@@ -840,7 +864,7 @@ function create_batch_xml(courseid)
 				xml += '<delete>true</delete>';
 				xml += '</map>';
 			}else{
-				if(mapValueHasChanged[mapping_id]){
+				if(sits_block.mapValueHasChanged[mapping_id]){
 					xml += "<map id='" + mapping_id + "'>";
 					day = YAHOO.util.Dom.get('id_' + mapping_id + '_map_day');
 					month = YAHOO.util.Dom.get('id_' + mapping_id + '_map_month');
@@ -856,10 +880,10 @@ function create_batch_xml(courseid)
 	xml += "</course>";
 	xml += '</batch_actions>';
 	return xml;
-}
+};
 
-function loadMappingsForCourse(courseid){
-	changes[courseid] = false;
+sits_block.loadMappingsForCourse = function(courseid){
+	sits_block.changes[courseid] = false;
 	var xml;
 	var currentDiv = YAHOO.util.Dom.get('id_' + courseid + '_mappings');
 	//Check if mappings are loaded, if so remove in order to reload 
@@ -867,7 +891,7 @@ function loadMappingsForCourse(courseid){
 		currentDiv.parentNode.removeChild(currentDiv);
 	}
 	//Swap to loading gif
-	loaderToLoad(courseid);
+	sits_block.loaderToLoad(courseid);
 	//Add mappings div
 	var mapDiv = document.createElement("div");
 	mapDiv.id = 'id_' + courseid + '_mappings';
@@ -876,12 +900,12 @@ function loadMappingsForCourse(courseid){
 	xml = "<?xml version='1.0' standalone='yes'?>";
 	xml += '<get_maps><course_id>' + courseid + '</course_id></get_maps>';
     //Kick off request
-	asyncRequest('get_map_ids', xml);
-}
+	sits_block.asyncRequest('get_map_ids', xml);
+};
 
-function hideMappingsForCourse(courseid){
+sits_block.hideMappingsForCourse = function(courseid){
 	var saveConfirm = true;
-	if(changes[courseid] === true){					
+	if(sits_block.changes[courseid] === true){					
 		saveConfirm = confirm('You have made unsaved changes.  Click OK to close the course mappings without saving, or click cancel and then Save Changes.');
 	}
 		if(saveConfirm){
@@ -891,79 +915,75 @@ function hideMappingsForCourse(courseid){
 			currentDiv.parentNode.removeChild(currentDiv);
 		}
 		//Swap Plus/Minus buttons
-		loaderToOpen(courseid);
+		sits_block.loaderToOpen(courseid);
 		//Hide Controls
 		var controlsElement = YAHOO.util.Dom.get('id_' + courseid + '_controls');
 		YAHOO.util.Dom.setAttribute(controlsElement,'style', 'display:none;');
 	}
-}
+};
 
-function add_coursem(moodlecourse)
-{
+sits_block.add_coursem = function(moodlecourse){
 	window.open("samis_user_interface_addm.php?moodlecourse=" + moodlecourse,"mockup_4m","height=500,width=600,status=no,toolbar=no,menubar=no,scrollbars=1,location=no");
-}
+};
 
-function view_groups_page()
-{
+sits_block.view_groups_page = function(){
 	var courseSelect = YAHOO.util.Dom.get('grp_course');
 	var courseid = courseSelect.options[courseSelect.selectedIndex].value;
 	window.open('/group/index.php?id=' + courseid, '', 'height = 600px, width = 800px, scrollbars=yes');
-}
+};
 
-function save_course_changes(courseid)
-{
+sits_block.save_course_changes = function(courseid){
 	var confirmed;
 	confirmed = confirm('Please confirm to save your changes to the mappings');
 	if(confirmed)
 	{
-		xml = create_batch_xml(courseid);
-		swapControlsForLoadMessage(courseid, 'Saving Changes - please wait');
-		asyncRequest('batch',xml);
-		changes[courseid]=false;
+		xml = sits_block.create_batch_xml(courseid);
+		sits_block.swapControlsForLoadMessage(courseid, 'Saving Changes - please wait');
+		sits_block.asyncRequest('batch',xml);
+		sits_block.changes[courseid]=false;
 	}
-}
+};
 
-function sync_course(course_id){
+sits_block.sync_course = function(course_id){
 	var confirmed;
 	confirmed = confirm('Please confirm you would like to sync this Moodle course with SAMIS');
 	if(confirmed){
 		var saveConfirm = true;
-		if(changes[course_id] === true){					
+		if(sits_block.changes[course_id] === true){					
 			saveConfirm = confirm('You have made unsaved changes.  Click OK to continue without saving, or click cancel and then Save Changes before syncing.');
 		}
 		if(saveConfirm){
 			xml = "<?xml version='1.0' standalone='yes'?><syncs><sync>" + course_id + "</sync></syncs>";
-			swapControlsForLoadMessage(course_id, 'Syncing Course - please wait');
-			asyncRequest('sync',xml);
+			sits_block.swapControlsForLoadMessage(course_id, 'Syncing Course - please wait');
+			sits_block.asyncRequest('sync',xml);
 		}
 	}
-}
+};
 
-function displayMapLoader(course_id){
+sits_block.displayMapLoader = function(course_id){
 	var loadDiv = document.createElement("div");
 	loadDiv.id = 'id_' + course_id + "_load";
 	loadDiv.className = 'liloader';
 	var titleDiv = YAHOO.util.Dom.get('id_' + course_id + "_title");
 	titleDiv.appendChild(loadDiv);
-}
+};
 
-function exit()
-{
+sits_block.exit = function(){
 	confirmed = confirm('Click OK to close the Cohorts and Groups interface');
 	if(confirmed)
 	{
 		window.close();
 	}
-}
+};
 
-function display_add_module(moodle_course) {
+sits_block.display_add_module = function(moodle_course){
     child = window.open("./samis_user_interface_addm.php?moodle_course=" + moodle_course,"addmodule", "height=600,width=587,status=yes,toolbar=no,menubar=no,scrollbars=1,location=no");
-}
+};
 
-function add_module_to_mappings() {
+sits_block.add_module_to_mappings = function(){
 	var year_group, period_code, mappingXML, typeElement;
 	var titleElement = YAHOO.util.Dom.get('which-samis-module');
-	var course_id = getTextContent(titleElement);
+	var course_id = sits_block.getTextContent(titleElement);
 	var codeElement = YAHOO.util.Dom.get('samis-module');
 	var sits_code = codeElement.value.toUpperCase();
 	var type = YAHOO.util.Dom.get('select_moduletype');
@@ -1013,7 +1033,7 @@ function add_module_to_mappings() {
 	  return;
 	}
 	
-	mappingXML = createMappingXML(
+	mappingXML = sits_block.createMappingXML(
 			course_id,
 			sits_code,
 			type.options[type.selectedIndex].value,
@@ -1023,18 +1043,16 @@ function add_module_to_mappings() {
 			unenrolElement.options[unenrolElement.selectedIndex].value, 
 			dateStringToSend
 	);
-	showAddingCohortLoader();
-	asyncRequest('create_map', mappingXML);
+	sits_block.showAddingCohortLoader();
+	sits_block.asyncRequest('create_map', mappingXML);
 }
 
-function addModuleClick(courseid)
-{
-	setTextContent(YAHOO.util.Dom.get('which-samis-module'), courseid);
-	overlay.show();
-} 
+sits_block.addModuleClick = function(courseid){
+	sits_block.setTextContent(YAHOO.util.Dom.get('which-samis-module'), courseid);
+	sits_block.overlay.show();
+};
 
-function switchModuleType()
-{
+sits_block.switchModuleType = function(){
 	var  periodselect, programyearselect;
 	periodselect = YAHOO.util.Dom.get('mod-programme');
 	programyearselect = YAHOO.util.Dom.get('mod-period');
@@ -1050,26 +1068,25 @@ function switchModuleType()
 		periodselect.disabled = true;
 		programyearselect.disabled = false;			
 	}
-}
+};
 
-function toggle_delete(remButton, mapId)
-{
+sits_block.toggle_delete = function(remButton, mapId){
 	var mapElement = YAHOO.util.Dom.get('id_' + mapId);
 	var enrolElment = YAHOO.util.Dom.get('id_' + mapId + '_map_unenrol_type');
 	if(remButton.value === 'Remove Cohort') {
 		remButton.value = 'Restore Cohort';
-		setDatesDisabledAttribute(mapId, true);
+		sits_block.setDatesDisabledAttribute(mapId, true);
 		YAHOO.util.Dom.addClass(mapElement, 'disabled');
 		YAHOO.util.Dom.setAttribute(enrolElment, 'disabled', 'disabled');
 	} else {
 		remButton.value = 'Remove Cohort';
-		setDatesDisabledAttribute(mapId, false);
+		sits_block.setDatesDisabledAttribute(mapId, false);
 		YAHOO.util.Dom.removeClass(mapElement, 'disabled');
 		YAHOO.util.Dom.setAttribute(enrolElment, 'disabled', '');
 	}	
-}
+};
 
-function update_cohort_list(courseid){
+sits_block.update_cohort_list = function(courseid){
 	var i, xml;
 	var mappingElement = YAHOO.util.Dom.get('select_mappings');
 	var mappingsOptions = YAHOO.util.Dom.getChildren(mappingElement);
@@ -1080,10 +1097,10 @@ function update_cohort_list(courseid){
 	xml = "<?xml version='1.0' standalone='yes'?>";
 	xml += '<get_maps><course_id>' + courseid + '</course_id></get_maps>';
     //Kick off request
-	asyncRequest('get_map_ids_group', xml);
-}
+	sits_block.asyncRequest('get_map_ids_group', xml);
+};
 
-function update_group_list(courseid) {
+sits_block.update_group_list = function(courseid) {
 	var i, xml;
 	var groupsElement = YAHOO.util.Dom.get('select_groups');
 	var groupsOptions = YAHOO.util.Dom.getChildren(groupsElement);
@@ -1094,19 +1111,19 @@ function update_group_list(courseid) {
 	xml = "<?xml version='1.0' standalone='yes'?>";
 	xml += '<get_groups><course_id>' + courseid + '</course_id></get_groups>';
     //Kick off request
-	asyncRequest('get_groups', xml);
-}
+	sits_block.asyncRequest('get_groups', xml);
+};
 
-function set_group_options(){
-	hideGroupNoMaps();
-	showGroupLoading('Loading mapped cohorts - please wait');
+sits_block.set_group_options = function(){
+	sits_block.hideGroupNoMaps();
+	sits_block.showGroupLoading('Loading mapped cohorts - please wait');
 	var selectElement;
 	selectElement = YAHOO.util.Dom.get('grp_course');
-	update_cohort_list(selectElement.options[selectElement.selectedIndex].value);
-	update_group_list(selectElement.options[selectElement.selectedIndex].value);
-}
+	sits_block.update_cohort_list(selectElement.options[selectElement.selectedIndex].value);
+	sits_block.update_group_list(selectElement.options[selectElement.selectedIndex].value);
+};
 
-function create_or_add_to_group(){
+sits_block.create_or_add_to_group = function(){
 	
 	var mappingSelect = YAHOO.util.Dom.get('select_mappings');
 	var groupElement;	
@@ -1122,12 +1139,12 @@ function create_or_add_to_group(){
 		op = 'create_group';
 		groupElement = YAHOO.util.Dom.get('groupname');	
 		xml += '<group_name>' + groupElement.value + '</group_name>';
-		showGroupLoading('Creating group - please wait');
+		sits_block.showGroupLoading('Creating group - please wait');
 	}else{
 		op = 'add_to_group';
 		groupElement = YAHOO.util.Dom.get('select_groups');
 		xml += '<group_id>' + groupElement.options[groupElement.selectedIndex].value + '</group_id>';
-		showGroupLoading('Adding selected cohorts to group - please wait');
+		sits_block.showGroupLoading('Adding selected cohorts to group - please wait');
 	}	
 	xml +='<maps>';
 	for(i=0;i<mappingSelect.options.length; i++){
@@ -1138,10 +1155,10 @@ function create_or_add_to_group(){
 	xml +='</maps>';
 	xml += '</maps_to_group>';
 	//alert('Here is where you ended - you need to add the cases and test the server side functions "create_group" and "add_to_group" next');
-	asyncRequest(op, xml);
-}
+	sits_block.asyncRequest(op, xml);
+};
 
-function update_add_group()
+sits_block.update_add_group = function()
 {
 	var bx_cohort, bx_group, btn_add;
 	bx_cohort = YAHOO.util.Dom.get('listcohorts[]');
@@ -1155,9 +1172,9 @@ function update_add_group()
 	{
 		btn_add.disabled = false;
 	}
-}
+};
 
-function groupnameselect()
+sits_block.groupnameselect = function()
 {
 	var bx, rd;
 	bx = YAHOO.util.Dom.get('groupname');
@@ -1167,16 +1184,16 @@ function groupnameselect()
 		bx.value = '';
 	}
 	rd.checked="checked";
-}
+};
 
-function groupexistselect()
+sits_block.groupexistselect = function()
 {
 	var rd;
 	rd = YAHOO.util.Dom.get('grp_radio_exist');
 	rd.checked="checked";
-}
+};
 
-function switch_view(view)
+sits_block.switch_view = function(view)
 {
 	var groupElement = YAHOO.util.Dom.get('groups');
 	var cohortElement = YAHOO.util.Dom.get('cohorts');
@@ -1193,66 +1210,66 @@ function switch_view(view)
 		groupBtn.disabled=false;
 		cohortBtn.disabled=true;
 	}
-}
+};
 
-function enable_save(courseid)
+sits_block.enable_save = function(courseid)
 {
 	YAHOO.util.Dom.get('id_' + courseid + '_save').disabled = false;
-	changes[courseid] = true;
-}
+	sits_block.changes[courseid] = true;
+};
 
-function mapValueChange(mapid)
+sits_block.mapValueChange = function(mapid)
 {
-	mapValueHasChanged[mapid] = true;
-}
+	sits_block.mapValueHasChanged[mapid] = true;
+};
 
 
-function disable_save(courseid)
+sits_block.disable_save = function(courseid)
 {
 	YAHOO.util.Dom.get('id_' + courseid + '_save').disabled = true;
-	changes[courseid] = false;
-}
+	sits_block.changes[courseid] = false;
+};
 
-function view_course(course_id){
+sits_block.view_course = function(course_id){
 	window.open('/blocks/sits/gui/views/participants.php?id=' + course_id, '', 'height = 600px, width = 800px, scrollbars=yes');
-}
+};
 
-function add_user(){
+sits_block.add_user = function(){
 	var bucs_id, fieldElement;
 	fieldElement = YAHOO.util.Dom.get('bucs_id_input');
 	bucs_id = fieldElement.value;
-	if(validate_bucs_id(bucs_id)){
+	if(sits_block.validate_bucs_id(bucs_id)){
 		var xml;
 		xml = "<?xml version='1.0' standalone='yes'?>";
 		xml += "<useradd>";
 		xml += "<bucsid>" + bucs_id + "</bucsid>";
 		xml += "</useradd>";
 
-		blurScreen('Adding User - please wait');
-		asyncRequest('adduser', xml);
+		sits_block.blurScreen('Adding User - please wait');
+		sits_block.asyncRequest('adduser', xml);
 		
 	}else{
 		alert('The username you have entered is not in a BUCS username format - please enter a valid BUCS username');
 	}
-}
+};
 
-function sync_all_courses(){
+sits_block.sync_all_courses = function(){
 	var confirmed;
 	confirmed = confirm('If you are absolutely sure you want to sync Each and Every Course In Moodle, go ahead and confirm.');
 	if(confirmed)
 	{
-		blurScreen('Syncing All Courses - please wait');
-		asyncRequest('sync_all',"<?xml version='1.0' standalone='yes'?><sync_all></sync_all>");
+		sits_block.blurScreen('Syncing All Courses - please wait');
+		sits_block.asyncRequest('sync_all',"<?xml version='1.0' standalone='yes'?><sync_all></sync_all>");
 	}
-}
+};
 
-function filterCourses(searchString){
+sits_block.filterCourses = function(searchString){
 	var searchPattern = new RegExp(searchString, 'i'); 
 	var i;	
 	var titleString, parentElement;
 	var courseTitles = YAHOO.util.Dom.getElementsByClassName('course_title');
 	for(i = 0; i < courseTitles.length; i++){
-		titleString = getTextContent(courseTitles[i]);
+		titleString = sits_block.getTextContent(courseTitles[i]);
 		parentElement = courseTitles[i].parentNode;
 		if(searchString === ''){			
 			YAHOO.util.Dom.setAttribute(parentElement, 'style', 'display:block;');
@@ -1264,15 +1281,96 @@ function filterCourses(searchString){
 			}
 		}
 	}
-}
+};
 
-function init() {
-	overlay = new DialogOverlay($('pop-up-box').remove());
+sits_block.populate_period_codes = function(){
+	var xml = "<?xml version='1.0' standalone='yes'?><get_periods></get_periods>";
+	sits_block.asyncRequest('get_periods', xml);
+};
+
+sits_block.appendPeriod = function(periodXML){
+	var code = periodXML.getElementsByTagName("code")[0].firstChild.data;
+	var acyear = periodXML.getElementsByTagName("acyear")[0].firstChild.data;
+	var start = periodXML.getElementsByTagName("start")[0].firstChild.data;
+	var end = periodXML.getElementsByTagName("end")[0].firstChild.data;
+	var revert = document.createElement('input');
+	YAHOO.util.Dom.setAttribute(revert, 'type', 'checkbox');
+	if(periodXML.getElementsByTagName("revert")[0].firstChild.data == '1'){
+		YAHOO.util.Dom.setAttribute(revert, 'checked', 'yes');
+	}
+	var periodTable = YAHOO.util.Dom.get('period_codes');
+	var calendarDiv = YAHOO.util.Dom.get('calendar');
+	var row = document.createElement('tr');
+	
+	var startButton = document.createElement('button');
+	sits_block.setTextContent(startButton, start);
+	YAHOO.util.Dom.setAttribute(startButton, 'id', sits_block.periodAppendCount + '_start');
+	var startCalDiv = document.createElement('div');
+	YAHOO.util.Dom.setAttribute(startCalDiv, 'id', sits_block.periodAppendCount + '_startCal');
+	YAHOO.util.Dom.setAttribute(startCalDiv, 'style', 'display:none;');
+	
+	var endButton = document.createElement('button');
+	sits_block.setTextContent(endButton, end);
+	YAHOO.util.Dom.setAttribute(endButton, 'id', sits_block.periodAppendCount + '_end');
+	
+	
+	var td1 = document.createElement('td');
+	var td2 = document.createElement('td');
+	var td3 = document.createElement('td');
+	var td4 = document.createElement('td');
+	var td5 = document.createElement('td');
+	
+	sits_block.setTextContent(td1, code);
+	row.appendChild(td1);
+	sits_block.setTextContent(td2, acyear);
+	row.appendChild(td2);
+	
+	td3.appendChild(startButton);
+	row.appendChild(td3);
+	
+	td4.appendChild(endButton);
+	row.appendChild(td4);
+	
+	td5.appendChild(revert);
+	row.appendChild(td5);
+	
+	periodTable.appendChild(row);
+	
+	var startCal = new YAHOO.widget.Calendar(startCalDiv,{ title:code + ', ' + acyear + ': Start', close:true });
+	calendarDiv.appendChild(startCalDiv);
+	activeDate = sits_block.periodAppendCount; 
+	startCal.selectEvent.subscribe(sits_block.calendarSelectHandler, startCal, false);
+	startCal.render();
+	
+	YAHOO.util.Event.addListener(sits_block.periodAppendCount + '_start', "click", startCal.show, startCal, true); 
+	sits_block.periodAppendCount++;
+
+};
+
+sits_block.calendarSelectHandler = function(type, args, obj){
+	if(activeDate === null){
+		return false
+	}
+	var activeDateButton  = YAHOO.util.Dom.get(activeDate +'_start');
+	sits_block.setTextContent(activeDate)
+	alert(args);
+	alert(obj);
+};
+
+sits_block.renderCalendar = function(element){
+	var startCal = new YAHOO.widget.Calendar(element);
+	startCal.render();
+};
+
+sits_block.admin_init = function() {
+	populate_period_codes();
+};
+
+sits_block.user_init = function() {
+	sits_block.overlay = new DialogOverlay($('pop-up-box').remove());
     $$('input.add').invoke('enable');
-    switch_view('cohort');
-    toggle_dates('add');
-    set_group_options();
-}
-
-YAHOO.util.Event.onDOMReady(init);
+    sits_block.switch_view('cohort');
+    sits_block.toggle_dates('add');
+    sits_block.set_group_options();
+};
 

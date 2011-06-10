@@ -197,4 +197,3 @@ class grade_module_cohort extends gen_mod_cohort {
         $this->validate_module();
     }
 }
-
