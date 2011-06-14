@@ -14,6 +14,8 @@
 
 **The block only supports SITS on Oracle databases**.
 
+**The block requires PHP version 5.3**
+
 **Certain validation functions may need to be customised**.
 We validate some data via regular expression pattern matching, in particular SITS module and program codes.  These patterns are unique to Bath;
 they will need to be customised appropriately for other installs of SITS.  At present this must be achieved by altering the code - in the future
