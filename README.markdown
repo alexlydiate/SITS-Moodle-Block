@@ -14,6 +14,11 @@
 
 **The block only supports SITS on Oracle databases**.
 
+**Certain validation functions may need to be customised**.
+We validate some data via regular expression pattern matching, in particular SITS module and program codes.  These patterns are unique to Bath;
+they will need to be customised appropriately for other installs of SITS.  At present this must be achieved by altering the code - in the future
+we may add an admin interface to alter these patterns, should the need arise.  
+
 **If your Moodle is using MySQL with MyISAM table engines, and depending on the number of mappings made, the Full Sync of all mappings 
 may have an adverse effect on Moodle's performance**.  This is due to the nature of MyISAM not supporting row-level locking, instead 
 locking entire tables each time it is queried.   If you are using MySQL with InnoDB table engines, which is now default on v5.5.x and above,
@@ -30,4 +35,4 @@ not be desirable in every institution.  It would be a simple code change to chan
 write this in as a configurable option.
 
 If a mapping finds that it wants to make an enrolment but that enrolment already exists it will takes ownership, linking that enrolment 
-to the mapping, unless the role_assigment.enrol value is 'manual'.
+to the mapping, unless the role_assignment.enrol value is 'manual'.
