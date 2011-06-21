@@ -114,6 +114,8 @@ if(has_capability('moodle/course:manageactivities', $context))
             $j_array_grp .= "courses_and_groups[" . $cur_key . "] = new Array('no groups');" . "\n";
         }
     }
+}else{
+    die('This interface is for teachers and administrators only');
 }
 ///Functions below
 

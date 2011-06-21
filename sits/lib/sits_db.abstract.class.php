@@ -167,8 +167,11 @@ abstract class sits_db implements i_sits_db {
         }
 
         $result = oci_fetch_object($this->period_for_code_stm);
-
-        return new sits_period($this->period_code,$this->academic_year, $result->start, $result->end);
+        if(is_object($result)){
+            return new sits_period($this->period_code,$this->academic_year, $result->start, $result->end);
+        }else{
+            return false;
+        }
     }
 
     public function current_period_codes_rh(){

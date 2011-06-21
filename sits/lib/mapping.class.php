@@ -37,5 +37,15 @@ class mapping {
         }else{
             $this->active = $active;
         }
+        $this->validate();
+    }
+    
+    private function validate(){
+        if($this->specified && $this->manual){
+            throw new Exception('A mapping cannot be both Specified and Manual');
+        }
+        if($this->default && $this->manual){
+            throw new Exception('A mapping cannot be both Default and Manual');
+        }
     }
 }

@@ -83,6 +83,13 @@ interface i_sits_sync {
      */
     public function add_cohort_members_to_group($cohort, $groupid);
     /**
+     * Adds or updates an alteration to a SITS period slot, setting either the start date, end date or both
+     * to a date different from that defined in SITS
+     * @param period_alteration object $period_alteration
+     */
+    public function alter_period($period_alteration);    
+    
+    /**
      * Updates all mappings period start and end dates
      * @return boolean
      */

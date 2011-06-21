@@ -17,6 +17,8 @@ define('ERROR_FAILED_TO_RETRIEVE_MAPPING', 5);
 define('ERROR_FAILED_TO_INSTANTIATE_COHORT', 6);
 define('FAILED_TO_CREATE_GROUP', 7);
 define('FAILED_TO_ADD_TO_GROUP', 8);
+define('FAILED_TO_UPDATE_PERIODS', 9);
+define('FAILED_TO_RESET_SYNC_FLAG', 10);
 
 /**
  * Handles all client requests
@@ -90,6 +92,12 @@ class sits_client_request {
                 break;
             case 'get_periods':
                 $this->get_periods();
+                break;
+            case 'save_periods':
+                $this->save_periods();
+                break;
+            case 'reset_sync_flag':
+                $this->reset_sync_flag();
                 break;
         }
     }
@@ -279,6 +287,8 @@ EOXML;
     private function process_batch_element(&$mapping, &$mappingXML, &$returnXMLObj){
         foreach($mappingXML->children() as $tag => $value){
             if($tag == 'delete'){
+                $mapping->manual = true; //This is a bit of a hack to allow this->update_mappings_for_period to play safe with 
+                // reactivating sync/spec mappings in the knowledge that it wasn't a user who deactivated them
                 if($this->sits_sync->deactivate_mapping($mapping)){
                     $returnXMLObj->addChild('deleted', $mapping->id);
                 }else{
@@ -573,6 +583,7 @@ EOXML;
         $periods = get_records('sits_period');
         if(is_array($periods)){
             $periodXML = '<period>';
+            $periodXML .= '<id>%s</id>';            
             $periodXML .= '<code>%s</code>';
             $periodXML .= '<acyear>%s</acyear>';
             $periodXML .= '<start>%s</start>';
@@ -580,7 +591,8 @@ EOXML;
             $periodXML .= '<revert>%s</revert>';
             $periodXML .= '</period>';
             foreach($periods as $period){
-                $returnXML .= sprintf($periodXML, $period->period_code,
+                $returnXML .= sprintf($periodXML, $period->id, 
+                                                $period->period_code,
                                                 $period->acyear,
                                                 substr($period->start_date, 0, -9),
                                                 substr($period->end_date, 0, -9),
@@ -590,6 +602,59 @@ EOXML;
         $returnXML .= '</perioddoc>';
         $this->content_type = 'text/xml';
         $this->response = $returnXML;
+    }
+    
+    private function save_periods(){
+        $this->response = SUCCESS;
+        foreach($this->xml->children() as $period_alter_xml){
+            foreach($period_alter_xml->children() as $tag => $value){
+                switch($tag){
+                    case 'id':
+                        $id = (int)$value;
+                    break;
+                    case 'code':
+                        $code = (string)$value;
+                    break;
+                    case 'acyear':
+                        $acyear = (string)$value;
+                    break;
+                    case 'start':
+                        $start = (string)$value;
+                    break;
+                    case 'end':
+                        $end = (string)$value;
+                    break;
+                    case 'revert':
+                        if($value == 1){
+                            $revert = true;
+                        }else{
+                            $revert = false;
+                        }
+                    break;
+                    case 'new_alter':
+                        if($value == 1){
+                            $id = null;
+                        }
+                    break;
+                }
+            }
+            $period_alteration = new period_alteration($code, $acyear, $start, $end, $revert, $id);
+            if(!$this->sits_sync->alter_period($period_alteration)){
+                $this->response = FAILED_TO_UPDATE_PERIODS;
+            }           
+        }
+
+        if(!$this->sits_sync->update_all_mapping_periods()){
+            $this->response = FAILED_TO_UPDATE_PERIODS;
+        }
+    }
+    
+    private function reset_sync_flag(){
+        if(set_config('sits_sync_all', 0)){
+            $this->response = SUCCESS;
+        }else{
+            $this->response = FAILED_TO_RESET_SYNC_FLAG;
+        }
     }
 }
 ?>

@@ -102,6 +102,6 @@ echo('<select class="date_box year" id="id_add_map_year">' . get_years($date) . 
 </fieldset>
 <p id="id_add_cohort_buttons"><input type="submit" class="add"
 	value="Add Cohort" onclick="sits_block.add_module_to_mappings()" /> <input
-	type="submit" class="cancel" value="Cancel" onclick="overlay.hide();" />
+	type="submit" class="cancel" value="Cancel" onclick="sits_block.overlay.hide();" />
 </p>
 <script type="text/javascript">sits_block.switchModuleType();</script></form>

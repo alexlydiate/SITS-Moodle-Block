@@ -1,18 +1,6 @@
 <?php
 /**
  * This is big hack-about of the original SAMIS block's samis_combo_interface
- * as part of stage one of the GUI development for the SITS block.  Frankenstien's monster, but with screws tight, at least.
- *
- * Stage Two should become properly integrated with Moodle instead of simply loading a couple of Moodle libraries.
- *
- * But, this is Stage One, in which the remit is to Make It Look Like The Old Interface, but Make It Work and Make It Sane(r).
- * So:
- * All Javascript functions have been moved to samis_user_interface.js for a bit of clarity, and re-written to utilise Moodle's prefered YUI.
- * Major php scripting and all php functions have been moved to samis_interface_logic.php.
- * The dtd and <head> tag has been moved to samis_head.php so it can be used across all three pages that make up the design of
- * the old SAMIS block interface.
- *
- *
  *
  * Original Comment Below:
  / This page contains functionality for both managing mapped cohorts and creating or populating groups based on cohorts.
@@ -80,7 +68,7 @@ include('./samis_head.php');?>
         	style="width: 40em;">
         	<!-- populated by js function -->
         </select>
-        <div id = "grp_no_maps" style="display: none"><p>You'll need to map a cohort to this course before you can add it to a group.</p></div>
+        <div id = "grp_no_maps" class="samis_font" style="display: none">You will need to <a onclick="sits_block.switch_view('cohort');">map a cohort</a> to this course before you can add it to a group.</div>
         </div>
         <div id="group_controls">
         <div name="grp_group_select" class="grpblock">
@@ -123,9 +111,9 @@ include('./samis_head.php');?>
 <div class="mng_cohort" id="cohorts">
 <div class="pagetitle"><!-- <h4>Manage SAMIS Cohorts</h4>	
 				<input type="submit" class="savechanges" id="btn_cohort_save" value="Save All Changes" disabled=true onclick="sits_block.commit();" />  -->
-<div class="filter">
-<input id="course_search_input" type="text" onkeyup="sits_block.filterCourses(this.value)"></input> Enter part of a course
-name or idnumber to filter display</div>
+<div id="course_filter" class="filter">
+<input id="course_search_input" type="text" onkeyup="sits_block.filterCourses(this.value)"></input>
+<span id = "filter_message">Enter part of a course name or idnumber to filter display</span></div>
 </div>
 <div id="course_search"></div>
 <div id="courses" class="course-list"><!-- <h4>Your Moodle Courses</h4>  -->

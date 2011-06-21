@@ -460,7 +460,9 @@ if ($roleid > 0) {
     if ($matchcount < $totalcount) {
         print_heading($strallparticipants.': '.$matchcount.'/'.$totalcount . $editlink, '', 3);
     } else {
-        print_heading($strallparticipants.': '.$matchcount . $editlink, '', 3);
+        print '<div style="width: 700px; text-align: center; margin-bottom: 5px;"><b>';
+    print $strallparticipants.': '.$matchcount . $editlink;
+    print '</b></div>';
     }
 }
 
@@ -494,7 +496,7 @@ if ($bulkoperations) {
         </script>
             ';
     echo '<form action="action_redir.php" method="post" id="participantsform" onsubmit="return checksubmit(this);">';
-    echo '<div>';
+    echo '<div  style="width: 700px;">';
     echo '<input type="hidden" name="sesskey" value="'.$USER->sesskey.'" />';
     echo '<input type="hidden" name="returnto" value="'.s(me()).'" />';
 }

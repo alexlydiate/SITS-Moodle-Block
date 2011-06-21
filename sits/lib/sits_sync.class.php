@@ -338,6 +338,35 @@ sql;
         return $return;
     }
 
+    public function alter_period($period_alteration){
+        $existing_alteration = get_record('sits_period', 'period_code', $period_alteration->code, 'acyear', $period_alteration->academic_year);
+        
+        $now = new DateTime();
+        
+        $data = new StdClass();
+        $data->period_code = $period_alteration->code;
+        $data->acyear = $period_alteration->academic_year;
+        $data->start_date = $period_alteration->start->format('Y-m-d H:i:s');
+        $data->end_date = $period_alteration->end->format('Y-m-d H:i:s');
+        if(is_int($period_alteration->id)){
+            $data->id = $period_alteration->id;
+        }
+        if($period_alteration->revert){
+            $data->revert = 1;
+        }else{
+            $data->revert = 0;
+        }        
+        $data->timestamp = $now->format('Y-m-d H:i:s');
+        
+        if($existing_alteration === false){
+            $result = insert_record('sits_period', $data);
+        }else{
+            $result = update_record('sits_period', $data);
+        }
+        
+        return $result;
+    }
+    
     public function update_all_mapping_periods(){
         $return = true;
         $period_codes_rh = $this->sits->current_period_codes_rh();
@@ -364,15 +393,20 @@ sql;
                 if($altered_code->revert){
                     $delete = delete_records('sits_period', 'period_code', $altered_code->period_code, 'acyear', $altered_code->acyear);
                     $period = $this->get_period_for_code($altered_code->period_code, $altered_code->acyear);
-                    if($this->update_mappings_for_period($period) === false){
-                        $return = false;
-                        $this->report->log_report(1, 'Failed update the automatic mappings with period code ' . $period->code . ', academic year ' . $period->academic_year);
+                    if(is_object($period)){
+                        if($this->update_mappings_for_period($period) === false){
+                            $return = false;
+                            $this->report->log_report(1, 'Failed update the automatic mappings with period code ' . $period->code . ', academic year ' . $period->academic_year);
+                        }
+                    }else{
+                        $this->report->log_report(1, 'Failed to instantiate period code object for ' . $period->code . ', academic year ' . $period->academic_year);
                     }
                 }
             }
         }
 
         foreach($keys_to_remove as $key){
+            $key = (int)$key;
             $altered_codes[$key] = null; //Don't process any altered codes that will have already been done as a current period code
         }
 
@@ -963,8 +997,9 @@ sql;
             $mapping = $this->read_mapping_for_course($module_cohort, $course->id);
             if(is_object($mapping)){ //No need to create it - but is it marked as a default?
                 if(!$mapping->default){ //No it isn't!  An outrage, make it so:
-                    $mapping->default = true;
-                    $this->update_mapping($mapping);
+                    if($this->convert_mapping_to_default($mapping)){
+                        $this->report->log_report(1, 'Failed to convert mapping ' . $mapping->id . ' to default');   
+                    }
                 }
             }else{ //No mapping exists, create it:
                 $period = $this->sits->get_period_for_code($module_cohort->period_code, $module_cohort->academic_year);
@@ -1007,8 +1042,9 @@ sql;
             $mapping = $this->read_mapping_for_course($program_cohort, $course->id);
             if(is_object($mapping)){ //No need to create it - but is it marked as a default?
                 if(!$mapping->default){ //No it isn't!  An outrage, make it so:
-                    $mapping->default = true;
-                    $this->update_mapping($mapping);
+                    if($this->convert_mapping_to_default($mapping)){
+                        $this->report->log_report(1, 'Failed to convert mapping ' . $mapping->id . ' to default');   
+                    }
                 }
             }else{ //No mapping exists, create it:
                 $mapping = new mapping($course->id,  $program_cohort, $this->academic_year_start, $this->academic_year_end, false, true);
@@ -1029,12 +1065,9 @@ sql;
     private function update_mappings_for_period(&$period){
         
         $now = new DateTime();        
-        if($period->start < $now && $period->end > $now){
-            $active = 1;
-        }else{
-            $active = 0;
-        }
-
+        $active = 1; //Set all sync with SITS mapping to active so that they will be processed with the new start/end dates
+        //A hack in the sits_client_request class sets all mappings to manual if they have been manually removed, so this 
+        //shouldn't effect user-deactivated mappings.
         $where = <<<sql
 period_code = '%s'
 AND acyear = '%s' 
@@ -1068,15 +1101,17 @@ sql;
         }
              
         //Set method id - 0 = automatic, 1 = specified, 2 = manual
+
+        if($mapping->manual){
+            $method = 'manual';
+        }
+        if($mapping->specified){
+            $method = 'specified';
+        }
         if(!$mapping->specified && !$mapping->manual){
             $method = 'automatic';
         }
-        if($mapping->specified && !$mapping->manual){
-            $method = 'specified';
-        }
-        if(!$mapping->specified && $mapping->manual && !$mapping->default){
-            $method = 'manual';
-        }
+
 
         $mapping_action = new mapping_action($mapping->id, $userid, $action, $method, $mapping->end);
          
@@ -1161,6 +1196,29 @@ sql;
         }
 
         return $valid;
+    }
+    
+    /**
+     * Converts a non-default mapping into a default mapping
+     * @param mapping object $mapping
+     * @return boolean
+     */
+    private function convert_mapping_to_default(&$mapping){
+        $mapping->default = true;
+        if($mapping->manual){
+            //Rare case of a user mapping what will be a default cohort ahead of time with a manual unenrol type;
+            //We don't do default + manual, so we'll have to swap it to specified and set the end date to 
+            //an abitrary 3 years into the future 
+            $mapping->manual = false;
+            $mapping->specified = true;
+            $now = new DateTime();
+            $mapping->end = $now->add(new DateInterval('P3Y'));
+        }
+        if($this->update_mapping($mapping)){
+            return true;
+        }else{
+            return false;
+        }
     }
 }
 

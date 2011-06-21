@@ -26,3 +26,24 @@ class sits_period {
         }
     }
 }
+
+class period_alteration extends sits_period{
+    
+    public $id; //Integer, id of period alteration, if it exists, null otherwise
+    public $revert; //Boolean, whether the period will be reverted on the next update
+    
+public function __construct($code, $academic_year, $start_date, $end_date, $revert, $id = null){
+        $this->code = $code;
+        $this->academic_year = $academic_year;
+        $this->start = new DateTime($start_date);
+        if($this->start === false){
+            return false;
+        }
+        $this->end = new DateTime($end_date);
+        if($this->end === false){
+            return false;
+        }
+        $this->id = $id;
+        $this->revert = $revert;
+    }
+}
