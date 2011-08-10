@@ -6,31 +6,30 @@
  **/
 
 require_once("../../../config.php");
-require_once('../../../group/lib.php');
-require_once('../../../lib/grouplib.php');
-require_once("../lib/sits_sync.class.php");  //This used to require samis_management...not no more!
-require_once("../config/sits_config.php");
-
 include('./samis_head.php');?>
-<body>
-<div id="canvas">
-<div class="bath-header">
-<div class="logo-box"><a href="http://www.bath.ac.uk/"> <img
-	src="http://www.bath.ac.uk/graphics/logos/logo-hp-trans.gif"
-	alt="University of Bath" /> </a></div>
-<div id="header" class=" clearfix">
-<h1 class="headermain">Add BUCS Users to Moodle</h1>
-</div>
-</div>
-<div class="mng_course">
-<h5>Select User:</h5>
-<input type="text" name="courseid" style="display: none;" /> BUCS
-Username of person to be added:<input type="text" name="bucsname"
-	id="bucs_id_input" value="" maxlength="12" size="12" /><br />
-<input type="submit" value="Add User" id="useradd_sub"
-	onclick="add_user()" />
-<hr />
-</div>
-
-</body>
+<html>
+    <body>
+        <div class="bath-header">
+            <div class="logo-box"><a href="http://www.bath.ac.uk/"> <img
+            	src="http://www.bath.ac.uk/graphics/logos/logo-hp-trans.gif"
+            	alt="University of Bath" /> </a></div>
+            <div id="header" class=" clearfix">
+                <h1 class="headermain">Add BUCS Users to Moodle</h1>
+            </div>
+        </div>
+        <div id = "container">
+            <div id = "period_container" class="admin_box">
+                <input type="text" name="courseid" style="display: none;" /> 
+                <b>BUCS Username of person to be added: </b><input type="text" name="bucsname"
+                	id="bucs_id_input" value="" maxlength="12" size="12" /> 
+                <input type="submit" value="Add User" id="useradd_sub"
+                	onclick="sits_block.add_user()" />
+                <div class = "admin_instruction">
+                <p>This form is used to add a BUCS user to Moodle.<br/>  
+                BUCS Lite accounts are not held in SAMIS and therefore cannot be validated.<br/>
+                Please ensure such usernames are correct before adding them.<br/>
+                </div>  
+            </div>
+        </div>
+    </body>
 </html>

@@ -53,9 +53,11 @@ class block_sits extends block_base {
 
     function cron() {
         GLOBAL $CFG;
+        
         switch($CFG->sits_cron_select){
             case 0:
             default: //Full sync is off, or else the variable has an unrecognised value - do nothing
+                mtrace('Full Sync is Off');
                 return true;
                 break;
             case 1: //Cron is set to Daily
@@ -64,18 +66,41 @@ class block_sits extends block_base {
                 if($now->format('Y-m-d') != $last_cron_sync->format('Y-m-d') && (int)$now->format('G') >= $CFG->sits_hour_of_sync){
                     //sync has not run today and it's past the hour - mark it, and do it
                     set_config('sits_last_cron_sync', $now->format('Y-m-d H:i:s'));
+                    mtrace('Full Sync set to Daily, and it is time - running a Full Sync...');
                     return $this->run_full_sync();
+                }else{
+                    mtrace('Full Sync set to Daily, and it is not time yet');
                 }
                 break;
             case 2: //Cron is set to continuous
+                mtrace('Full Sync set to Continuous - running a Full Sync...');
                 return $this->run_full_sync();
                 break;
         }
     }
 
     function run_full_sync(){
+        GLOBAL $CFG;
         $sits_sync = new sits_sync();
-        return $sits_sync->sync_all_courses();
+            
+        if($CFG->sits_remove_orphans == 1){
+            mtrace('Beginning orphaned mappings removal...');
+            if($sits_sync->remove_orphaned_mappings()){
+                mtrace('Completed orphaned mappings removal');
+            }else{
+                mtrace('sits_sync->remove_orphaned_mappings() returned false');
+            }
+        }else{
+            mtrace('Orphaned mappings removal set to Off');
+        }
+        
+        if($sits_sync->sync_all_courses()){
+             $now = new DateTime();
+             set_config('sits_last_cron_sync', $now->format('Y-m-d H:i:s'));
+             mtrace('All courses have been synced');
+        }else{             
+             mtrace('sits_sync->sync_all_courses() returned false');
+        }
     }
 
     function instance_allow_config() {

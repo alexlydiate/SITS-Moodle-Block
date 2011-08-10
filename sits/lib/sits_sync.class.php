@@ -19,6 +19,7 @@ class sits_sync implements i_sits_sync {
     private $academic_year_start; //DateTime object
     private $academic_year_end; //DateTime object
     private $last_academic_year; //Last academic year string
+    private $next_academic_year; //Next academic year string
     private $default_mod_start_minus = 14; //Integer, default number of days by which a default mapping is advanced
     private $default_mod_end_plus = 14; //Integer, default number of days by which a default mapping is extended FIXME Make these admin configurable
     private $sync_assign_period_with_sits = false; //Set this to true and the courses will revert to the SITS default period
@@ -29,21 +30,31 @@ class sits_sync implements i_sits_sync {
     private $count_users_to_courses = 0; //count of the total number of memberships added
     private $assignments = 0; //count of new role assignments
     private $duplicate_assignments = 0; //count of duplicate assignments
-
+    private $date; //DateTime object to use as today's date
+    
     public function __construct($testing = false){
         $this->report = new report();
+        $this->date = new DateTime();
         //FIXME Put a try/catch block here and throw an exception in sits class to defend against SAMIS being down
         $this->sits = new sits($this->report, $testing);
         $this->set_academic_year();
         $this->set_last_academic_year();
+        $this->set_next_academic_year();
     }
 
     //////////////////////Implementation of i_sits_sync///////////////////////////
 
     public function sync_course($course_id){
         $mappings = $this->read_mappings_for_course($course_id);
+
         if(is_array($mappings)){
             foreach($mappings as $mapping){
+                //Mapping housekeeping...
+                if(!$this->housekeep_mapping($mapping)){
+                    $this->report->log_report(1, 'Failed to housekeep mapping id ' . $mapping->id);
+                    continue;
+                }
+                //...after which, sync if active
                 if($mapping->active){
                     if(!$this->sync_mapping($mapping)){
                         $this->report->log_report(1, 'Failed to sync mapping id ' . $mapping->id);
@@ -72,12 +83,6 @@ class sits_sync implements i_sits_sync {
           
         $this->report->log_report(0, 'Started full sync');
         
-        /*if($this->remove_orphaned_mappings()){
-            $this->report->log_report(2, 'Failed to remove orphaned mappings');
-            set_config('sits_sync_all', 0);
-            return false;
-        }*/
-        
         if(!$this->sync_modules_with_sits()){
             $this->report->log_report(2, 'Failed to sync all modules');
             set_config('sits_sync_all', 0);
@@ -86,6 +91,12 @@ class sits_sync implements i_sits_sync {
 
         if(!$this->sync_programs_with_sits()){
             $this->report->log_report(2, 'Failed to syncing all programs');
+            set_config('sits_sync_all', 0);
+            return false;
+        }
+        
+        if(!$this->update_all_mapping_periods()){
+            $this->report->log_report(2, 'Failed to adjust mapping periods');
             set_config('sits_sync_all', 0);
             return false;
         }
@@ -104,6 +115,11 @@ class sits_sync implements i_sits_sync {
 
     public function read_mappings_for_course($course_id){
         $course = get_record('course', 'id', $course_id);
+        if(!$course){
+            $this->report->log_report(1, 'read_mappings_for_course couldn not get course object for id ' . $course_id);
+            return false;
+        }
+        
         $select = <<<sql
 courseid = %s
 sql;
@@ -160,7 +176,7 @@ sql;
             }else{
                 return true;
             }
-        }elseif(!insert_record('sits_mappings', $this->data_row_object_from_mapping(&$mapping), false)){
+        }elseif(!insert_record('sits_mappings', $this->data_row_object_from_mapping($mapping), false)){
             $this->report->log_report(1, sprintf('Failed to insert mapping %s to %s', $mapping->cohort->sits_code, $mapping->courseid));
             return false;
         }elseif(!$this->add_mapping_action($this->read_mapping_for_course($mapping->cohort, $mapping->courseid), 'create')){
@@ -189,7 +205,7 @@ sql;
         if(!$this->remove_assignments($mapping, true)){
             $this->report->log_report(1, sprintf('Could not remove assignments for mapping %s to %s', $mapping->cohort->sits_code, $mapping->courseid));
             return false;
-        }elseif(!update_record('sits_mappings', $this->data_row_object_from_mapping($mapping))){
+        }elseif(!$this->update_mapping($mapping)){
             $this->report->log_report(1, sprintf('Failed to de-activate mapping for %s to %s', $mapping->cohort->sits_code, $mapping->courseid));
             return false;
         }elseif(!$this->add_mapping_action($mapping, 'deactivate')){
@@ -260,7 +276,6 @@ sql;
         }else{
             return $mapping;
         }
-
     }
 
     public function read_users_for_mapping($mapping_id){
@@ -282,7 +297,7 @@ sql;
 
         while($row = oci_fetch_object($rh)){
             if($row->username != ''){
-                $this->user_by_username($row->username);
+                $user = $this->user_by_username($row->username);
             }else{
                 $user = false;
             }
@@ -299,7 +314,7 @@ sql;
         if(is_object($user)){
             return $user;
         }else{
-            $user = create_user_record($username, null, 'cas');
+            $user = create_user_record($username, null, 'bathcas');
             if(is_object($user)){
                 $this->created_users++;
                 return $user;
@@ -338,10 +353,8 @@ sql;
         return $return;
     }
 
-    public function alter_period($period_alteration){
+    public function alter_period(&$period_alteration){
         $existing_alteration = get_record('sits_period', 'period_code', $period_alteration->code, 'acyear', $period_alteration->academic_year);
-        
-        $now = new DateTime();
         
         $data = new StdClass();
         $data->period_code = $period_alteration->code;
@@ -356,7 +369,7 @@ sql;
         }else{
             $data->revert = 0;
         }        
-        $data->timestamp = $now->format('Y-m-d H:i:s');
+        $data->timestamp = $this->date->format('Y-m-d H:i:s');
         
         if($existing_alteration === false){
             $result = insert_record('sits_period', $data);
@@ -422,6 +435,25 @@ sql;
 
         return $return;
     }
+    
+    public function remove_orphaned_mappings(){
+        $mappings_rs = get_recordset('sits_mappings');
+        if($mappings_rs != false){
+            while($mapping_record = rs_fetch_next_record($mappings_rs)){
+                $mapping = $this->mapping_object_from_record($mapping_record);
+                if(!$this->validate_mapping($mapping)){
+                   if($this->delete_mapping($mapping)){
+                       $this->report->log_report(0, 'Deleted mapping ' .
+                                        $mapping->cohort->sits_code . ' to ' . 
+                                        $mapping->courseid);
+                   }                       
+                }                    
+            }
+            return true;
+        }else{
+            return false;
+        }
+    }
 
     /////////////////Wrapping SITS abstraction services////////////////
 
@@ -458,6 +490,11 @@ sql;
         return $this->sits->update_agreed_grade($student,$grade,$cohort);
     }
 
+    /////////////////////Wrapping Log Services///////////////////
+    
+    public function log_report($type, $message, $output='log'){
+        return $this->report->log_report($type, $message, $output='log');
+    }
     /////////////////////Private Functions//////////////////////
 
     /**
@@ -589,7 +626,7 @@ sql;
      * @return boolean 
      */
     private function sync_modules_with_sits(){
-        $academic_years = array($this->last_academic_year, $this->academic_year);
+        $academic_years = array($this->last_academic_year, $this->academic_year, $this->next_academic_year);
         foreach($academic_years as $acyear){
             $modules_rh = $this->sits->mods_for_academic_year($acyear);
             if($modules_rh === false){
@@ -603,14 +640,15 @@ sql;
                 if(is_array($courses) && count($courses) > 1){
                     $this->report->log_report(1, 'Multiple Moodle courses found for module ' . $row->sits_code . ' - will sync all, though please review');
                 }elseif(!is_array($courses)){
-                    if(!$this->create_course_for_cohort(&$row)){
+                    if(!$this->create_course_for_cohort($row)){
                         $this->report->log_report(1, 'Failed to create course for module with SITS code ' . $row->sits_code);
+                    }else{
+                       $courses = get_records('course', 'idnumber', $row->sits_code); 
                     }
-                }
-                 
-                $cohort = new module_cohort($row->sits_code, $row->period_code, $acyear);
+                }                           
                  
                 if(is_array($courses)){
+                    $cohort = new module_cohort($row->sits_code, $row->period_code, $acyear);
                     if(!$this->ensure_module_has_default_mapping($courses, $cohort)){
                         $this->report->log_report(1, 'Ensure_module_has_default_mapping met with a problem');
                     }
@@ -637,8 +675,10 @@ sql;
             if(is_array($courses) && count($courses) > 1){
                 $this->report->log_report(1, 'Multiple Moodle courses found for program ' . $row->sits_code . ' - will sync all, though please review');
             }elseif(!is_array($courses)){
-                if(!$this->create_course_for_cohort(&$row)){
+                if(!$this->create_course_for_cohort($row)){
                     $this->report->log_report(1, 'Failed to create course for module with SITS code ' . $row->sits_code);
+                }else{
+                    $courses = get_records('course', 'idnumber', $row->sits_code); 
                 }
             }
             //Only sync programs for which there is already a course created in Moodle - sadly, there may be more than one
@@ -717,18 +757,7 @@ private function create_course_for_cohort(&$cohort_data){
      * @return boolean
      */
     private function sync_mapping(&$mapping){
-        $now = new DateTime();
-        if($mapping->end < $now && !$mapping->manual){
-            //Mapping is auto and has expired, remove any associated assignments and return
-            if(!is_object($this->remove_assignments($mapping, true))){
-                $this->report->log_report(2, sprintf('Could not remove assignments for mapping %s'), $mapping->id);
-                return false;
-            }
-            if($mapping->active){
-                $mapping->active = false;
-                $this->update_mapping($mapping);
-            }
-        }elseif(($mapping->start < $now && $mapping->end > $now) || $mapping->manual){ //...go ahead and sync
+        if(($mapping->start < $this->date && $mapping->end > $this->date) || $mapping->start < $this->date && $mapping->manual){ //...go ahead and sync
             switch($mapping->cohort->type){
                 case 'program':
                     return $this->sync_program_mapping($mapping);
@@ -738,7 +767,6 @@ private function create_course_for_cohort(&$cohort_data){
                     break;
             }
         }else{
-            //$this->report->log_report(0, sprintf('Period of mapping of %s does not encompass current date', $mapping->id));
             //Date is outside of period code, so no need to go on -
             return true;
         }
@@ -776,6 +804,7 @@ private function create_course_for_cohort(&$cohort_data){
         }
             
         if($members_rh === false){
+            $this->report->log_report(1, 'Could not get resource handle for Mapping with id '  . $mapping->id);
             return false;
         }else{
             return $this->process_sync($members_rh, $mapping);
@@ -790,12 +819,26 @@ private function create_course_for_cohort(&$cohort_data){
      * @return boolean
      */
     private function process_sync(&$rh, &$mapping){
+        
+        $sits_cohort_members = array();
+        //Possible FIXME - I can't find a way of using an OCI8 resource handle twice in a while() loop - I think the cursor runs to the end,
+        //and is then stuck there, there seems no manner to reset it.  So, until a way is found, read the result into an array of objects:
+        while($row = oci_fetch_object($rh)){
+            $sits_cohort_members[] = $row;
+        }
+        
+        if(!$this->remove_assignments_no_longer_in_cohort($sits_cohort_members, $mapping)){
+            $this->report->log_report(1, 'Failed to complete check of whether assignments still in cohort for Mapping id '  . $mapping->id);
+        }
+        
         $course_context = get_context_instance(CONTEXT_COURSE, $mapping->courseid);
+        
         if($course_context === false){
-            $this->report->log_report(1, 'Failed to take sync '  . $mapping->id . '; could not get course context' );
+            $this->report->log_report(1, 'Failed to sync '  . $mapping->id . '; could not get course context' );
             return false;
         }
-        while($row = oci_fetch_object($rh)){
+             
+        foreach($sits_cohort_members as $row){
             if($row->username != ''){
                 $user = $this->user_by_username($row->username);
             }else{
@@ -806,7 +849,7 @@ private function create_course_for_cohort(&$cohort_data){
                 //Does the assignment already exist for this mapping?
                 $assignment = get_record('role_assignments', 'userid', $user->id, 'contextid', $course_context->id, 'roleid', $role_id);
                 if(is_object($assignment)){
-                    if(!$this->take_assignment_ownership(&$mapping, &$assignment)){
+                    if(!$this->take_assignment_ownership($mapping, $assignment)){
                         $this->report->log_report(1, 'Failed to take ownership '  . $row->sits_code . '; cannot enrol ' . $row->username . ', in process_full_sync' );
                     }
                 }else{
@@ -816,7 +859,8 @@ private function create_course_for_cohort(&$cohort_data){
                     }
                 }
             }
-        }
+        }        
+        
         return true;
     }
     /**
@@ -869,9 +913,8 @@ private function create_course_for_cohort(&$cohort_data){
      * sets current academic year in the format 'yyyy/+1' style, such as 2010/1, 2011/2 and the lke
      */
     private function set_academic_year(){
-        $date = date('m-Y');
-        $date_array = explode('-', $date);
-        if(intval($date_array[0]) >= 7){
+        $date_array = explode('-', $this->date->format('m-Y'));
+        if(intval($date_array[0]) > 7){
             $this->academic_year = strval(intval($date_array[1])) . '/' . substr(strval(intval($date_array[1]) + 1), -1);
             $this->academic_year_start = new DateTime($date_array[1] . '-07-31 00:00:00');
             $this->academic_year_end = new DateTime($date_array[1] + 1 . '-07-31 00:00:00');
@@ -886,13 +929,23 @@ private function create_course_for_cohort(&$cohort_data){
      * sets last academic year in the format 'yyyy/+1' style, such as 2010/1, 2011/2 and the lke
      */
     private function set_last_academic_year(){
-        $date = new DateTime;
-        $date->sub(new DateInterval('P1Y'));
-        $date_array = explode('-', $date->format('m-Y'));
-        if(intval($date_array[0]) >= 7){
-            $this->last_academic_year = strval(intval($date_array[1])) . '/' . substr(strval(intval($date_array[1]) + 1), -1);
-        }else{
+        $date_array = explode('-', $this->date->format('m-Y'));
+        if(intval($date_array[0]) > 7){
             $this->last_academic_year = strval(intval($date_array[1]) - 1) . '/' . substr(strval(intval($date_array[1])), -1);
+        }else{
+            $this->last_academic_year = strval(intval($date_array[1]) - 2) . '/' . substr(strval(intval($date_array[1]) - 1), -1);
+        }
+    }
+    
+    /**
+     * sets n academic year in the format 'yyyy/+1' style, such as 2010/1, 2011/2 and the lke
+     */
+    private function set_next_academic_year(){
+        $date_array = explode('-', $this->date->format('m-Y'));
+        if(intval($date_array[0]) < 8){
+            $this->next_academic_year = strval(intval($date_array[1])) . '/' . substr(strval(intval($date_array[1]) + 1), -1);
+        }else{
+            $this->next_academic_year = strval(intval($date_array[1]) + 1) . '/' . substr(strval(intval($date_array[1]) + 2), -1);
         }
     }
 
@@ -910,7 +963,23 @@ private function create_course_for_cohort(&$cohort_data){
                 $cohort = new program_cohort($record->sits_code, $record->year_group, $record->acyear);
                 break;
         }
-        return new mapping($record->courseid, $cohort, new DateTime($record->start_date), new DateTime($record->end_date), $record->manual, $record->default_map, $record->id, $record->specified, $record->active);
+        
+        try{$mapping = new mapping(
+                            $record->courseid, 
+                            $cohort, 
+                            new DateTime($record->start_date), 
+                            new DateTime($record->end_date), 
+                            $record->manual, 
+                            $record->default_map, 
+                            $record->id, 
+                            $record->specified, 
+                            $record->active);    
+        }catch(Exception $e){
+              $this->report->log_report(1, 'sits_sync->mapping_object_from_record failed to instatiate mapping object from mapping id ' . $record->id . ' - exception: ' . $e->getMessage());
+              $mapping = false;
+        }
+        
+        return $mapping;
     }
 
     /**
@@ -995,21 +1064,25 @@ sql;
 
         foreach($courses as $course){
             $mapping = $this->read_mapping_for_course($module_cohort, $course->id);
-            if(is_object($mapping)){ //No need to create it - but is it marked as a default?
-                if(!$mapping->default){ //No it isn't!  An outrage, make it so:
-                    if($this->convert_mapping_to_default($mapping)){
+            if(is_object($mapping)){ //No need to create it - but is it marked as a default and active?
+                if(!$mapping->default || !$mapping->active){ //No it isn't!  An outrage, make it so:
+                    if(!$this->convert_mapping_to_active_default($mapping)){
                         $this->report->log_report(1, 'Failed to convert mapping ' . $mapping->id . ' to default');   
                     }
                 }
             }else{ //No mapping exists, create it:
                 $period = $this->sits->get_period_for_code($module_cohort->period_code, $module_cohort->academic_year);
-                $mapping = new mapping($course->id, $module_cohort, $period->start, $period->end, false, true);
-                if(!$this->create_mapping($mapping, true)){ //second param is temporary development hack
-                    $this->report->log_report(1, 'Failed to create default mapping for ' . $module_cohort->sits_code);
+                try{
+                    $mapping = new mapping($course->id, $module_cohort, $period->start, $period->end, false, true);
+                    if(!$this->create_mapping($mapping, true)){ //second param is temporary development hack
+                        $this->report->log_report(1, 'Failed to create default mapping for ' . $module_cohort->sits_code);
+                        $return = false;
+                    }
+                }catch(Exception $e){
+                    $this->report->log_report(1, 'sits_sync->ensure_module_has_default_mapping failed to instatiate mapping object - exception: ' . $e->getMessage());
                     $return = false;
                 }
             }
-
             if($this->sync_assign_period_with_sits){
                 //If you want to reset to mapping to the SITS period code
                 $period->start->sub(new DateInterval('P' . $this->default_mod_start_minus . 'D'));
@@ -1041,15 +1114,20 @@ sql;
         foreach($courses as $course){
             $mapping = $this->read_mapping_for_course($program_cohort, $course->id);
             if(is_object($mapping)){ //No need to create it - but is it marked as a default?
-                if(!$mapping->default){ //No it isn't!  An outrage, make it so:
-                    if($this->convert_mapping_to_default($mapping)){
+                if(!$mapping->default || !$mapping->active){ //No it isn't!  An outrage, make it so:
+                    if(!$this->convert_mapping_to_active_default($mapping)){
                         $this->report->log_report(1, 'Failed to convert mapping ' . $mapping->id . ' to default');   
                     }
                 }
             }else{ //No mapping exists, create it:
-                $mapping = new mapping($course->id,  $program_cohort, $this->academic_year_start, $this->academic_year_end, false, true);
-                if(!$this->create_mapping($mapping, true)){ //second param is temporary development hack
-                    $this->report->log_report(1, 'Failed to create default mapping for ' . $program_cohort->sits_code);
+                try{
+                    $mapping = new mapping($course->id,  $program_cohort, $this->academic_year_start, $this->academic_year_end, false, true);
+                    if(!$this->create_mapping($mapping, true)){ //second param is temporary development hack
+                        $this->report->log_report(1, 'Failed to create default mapping for ' . $program_cohort->sits_code);
+                        $return = false;
+                    }
+                }catch(Exception $e){
+                    $this->report->log_report(1, 'sits_sync->ensure_program_has_default_mapping failed to instatiate mapping object - exception: ' . $e->getMessage());
                     $return = false;
                 }
             }
@@ -1063,11 +1141,12 @@ sql;
      * @return boolean
      */
     private function update_mappings_for_period(&$period){
+        $return = true;
         
-        $now = new DateTime();        
         $active = 1; //Set all sync with SITS mapping to active so that they will be processed with the new start/end dates
         //A hack in the sits_client_request class sets all mappings to manual if they have been manually removed, so this 
         //shouldn't effect user-deactivated mappings.
+        //Set start and end for Sync mappings
         $where = <<<sql
 period_code = '%s'
 AND acyear = '%s' 
@@ -1080,10 +1159,26 @@ sql;
         $set_active = set_field_select('sits_mappings', 'active', $active, sprintf($where, $period->code, $period->academic_year));
         
         if($set_start != false && $set_end != false && $set_active !=false){
-            return true;
+            //
         }else{
-            return false;
+            $return = false;
         }
+
+        $where = <<<sql
+period_code = '%s'
+AND acyear = '%s' 
+AND manual = 1 OR specified = 1
+sql;
+
+        $set_start = set_field_select('sits_mappings', 'start_date', $period->start->format('Y-m-d H:i:s'), sprintf($where, $period->code, $period->academic_year));
+        
+        if($set_start != false && $set_end != false && $set_active !=false){
+            //
+        }else{
+            $return = false;
+        }
+        
+        return $return;
     }
 
     /**
@@ -1118,32 +1213,7 @@ sql;
         return insert_record('sits_mappings_history', $this->data_row_object_from_mapping_action($mapping_action), false);
 
     }
-    
-    /**
-     * Cycles through and validates all mappings - if they are invalid, that is to say if either the SITS cohort or Moodle course
-     * does not exist, the mapping will be deleted.
-     * @return boolean
-     */
-    private function remove_orphaned_mappings(){
-
-        $mappings_rs = get_recordset('sits_mappings');
-            if($mappings_rs != false){
-                while($mapping_record = rs_fetch_next_record($mappings_rs)){
-                    $mapping = $this->mapping_object_from_record($mapping_record);
-                    if(!$this->validate_mapping($mapping)){
-                       if($this->delete_mapping($mapping)){
-                           $this->report->log_report(0, 'Deleted mapping ' .
-                                            $mapping->cohort->sits_code . ' to ' . 
-                                            $mapping->courseid);
-                       }                       
-                    }                    
-                }
-                return false;
-            }else{
-                return true;
-        }
-    }
-    
+      
     /**
      * Validates a mapping object to check it contains an existing SITS cohort and Moodle course
      * @param mapping object $mapping
@@ -1203,16 +1273,16 @@ sql;
      * @param mapping object $mapping
      * @return boolean
      */
-    private function convert_mapping_to_default(&$mapping){
+    private function convert_mapping_to_active_default(&$mapping){
         $mapping->default = true;
+        $mapping->active = true;
         if($mapping->manual){
             //Rare case of a user mapping what will be a default cohort ahead of time with a manual unenrol type;
             //We don't do default + manual, so we'll have to swap it to specified and set the end date to 
             //an abitrary 3 years into the future 
             $mapping->manual = false;
             $mapping->specified = true;
-            $now = new DateTime();
-            $mapping->end = $now->add(new DateInterval('P3Y'));
+            $mapping->end = $this->date->add(new DateInterval('P3Y'));
         }
         if($this->update_mapping($mapping)){
             return true;
@@ -1220,5 +1290,99 @@ sql;
             return false;
         }
     }
-}
+    
+    /**
+     * Given an array of objects representing a result row from a cohort reseource handle and a related mapping object
+     * this will remove any student assignment in Moodle that is no longer part of the cohort in SAMIS.
+     * @param array $sits_cohort_members
+     * @param mapping object $mapping
+     * @return boolean
+     */
+    private function remove_assignments_no_longer_in_cohort(&$sits_cohort_members, &$mapping){
+        $return = true;
 
+        $role_assignments = get_records('role_assignments', 'enrol', $mapping->id);       
+        $remove_assignment = false;
+        
+        if(is_array($role_assignments)){
+            $remove_assignment = array();
+            foreach($role_assignments as $ra){
+                $user = get_record('user', 'id', $ra->userid);
+                $remove_assignment[$ra->id] = true;
+                foreach($sits_cohort_members as $member){                
+                    if($user->username == $member->username){
+                        $remove_assignment[$ra->id] = false;                    
+                    }
+                }
+            }
+        }
+        
+        if(is_array($remove_assignment)){
+            foreach($remove_assignment as $ra_id => $remove){
+                if($remove){
+                    if(!delete_records('role_assignments', 'id', (int)$ra_id)){
+                        $this->report->log_report(1, 'remove_assignments_no_longer_in_cohort() failed to remove role assignment with id ' . $ra_id);
+                        $return = false;
+                    }
+                }
+            }
+        }
+        
+        return $return;
+    }
+    
+    /**
+     * Housekeeping function to tidy up mappings in response to changes either to Moodle or to periods
+     * @param mapping object $mapping
+     * @return boolean
+     */
+    private function housekeep_mapping(&$mapping){
+        $course = get_record('course', 'id', $mapping->courseid);
+        if(!is_object($course)){
+            $this->report->log_report(1, 'housekeep_mapping could not get course object for mapping id ' . $mapping->id);
+            return false;
+        }
+        /* This block deactives and un-defaults mappings for which the idnumber of the corresponding course has changed.
+         * It was decided instead to keep all old defaults as-is in such an instance, so commented out for now, but you never know
+         * when these things change back again.
+        if($mapping->default && $mapping->cohort->sits_code != $course->idnumber){
+            //Most likely somebody's changed the idumber through the Course Settings interface
+            //So now this is no longer a default mapping for this course, and so
+            $mapping->default = false;
+            $mapping->active = false;                        
+            if(!$this->update_mapping($mapping)){
+                $this->report->log_report(2, 'housekeep_mapping could not update mapping ' . $mapping->id);
+                return false;
+            }
+        }*/
+        if(($mapping->end < $this->date || $mapping->start > $this->date) && !$mapping->manual && $mapping->active){
+            //Mapping is auto and out of period, remove any associated Student assignments and return
+            //This is to cater for the period code having between changed by an administrator in Moodle
+            //FIXME Teacher assignments remain, therefore the mapping is, effectively, active - though, this is a confused issue
+            if(!is_object($this->remove_assignments($mapping, true))){
+                $this->report->log_report(2, 'housekeep_mapping could not remove assignments for mapping ' . $mapping->id);
+                return false;
+            }
+        }
+        
+        if($mapping->start > $this->date && $mapping->active && ($mapping->manual || $mapping->specified)){
+            //Mapping is manual or specified, active and before start - remove assignments
+            if(!is_object($this->remove_assignments($mapping))){
+                $this->report->log_report(2, 'housekeep_mapping could not remove assignments for mapping ' . $mapping->id);
+                return false;
+            }
+        }
+              
+        //FIXME The following conditional is a hangover from having made default mappings inactive if they were not in date.  
+        //Will not be necessary after one run 
+        if(($mapping->start < $this->date && $mapping->end > $this->date) && $mapping->default && !$mapping->active){
+            //Mapping is default, within period but inactive - make active
+            $mapping->active = true;
+            if($this->update_mapping($mapping)){
+                $this->report->log_report(2, 'housekeep_mapping could not update mapping ' . $mapping->id);
+                return false;
+            };
+        }        
+        return true;
+    }
+}

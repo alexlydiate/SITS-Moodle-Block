@@ -15,10 +15,11 @@ define('ERROR_MAPPING_ALREADY_EXISTS', 3);
 define('ERROR_FAILED_TO_DELETE_MAPPING', 4);
 define('ERROR_FAILED_TO_RETRIEVE_MAPPING', 5);
 define('ERROR_FAILED_TO_INSTANTIATE_COHORT', 6);
-define('FAILED_TO_CREATE_GROUP', 7);
-define('FAILED_TO_ADD_TO_GROUP', 8);
-define('FAILED_TO_UPDATE_PERIODS', 9);
-define('FAILED_TO_RESET_SYNC_FLAG', 10);
+define('ERROR_FAILED_TO_CREATE_GROUP', 7);
+define('ERROR_FAILED_TO_ADD_TO_GROUP', 8);
+define('ERROR_FAILED_TO_UPDATE_PERIODS', 9);
+define('ERROR_ERROR_FAILED_TO_RESET_SYNC_FLAG', 10);
+define('ERROR_FAILED_TO_INSTANTIATE_MAPPING', 11);
 
 /**
  * Handles all client requests
@@ -67,7 +68,7 @@ class sits_client_request {
             case 'sync':
                 $this->sync();
                 break;
-            case 'adduser':
+            case 'add_user':
                 $this->add_user_by_bucs_id();
                 break;
             case 'sync_all':
@@ -159,7 +160,7 @@ EOXML;
                         return false;
                     }
                 }catch(InvalidArgumentException $e){
-                    $this->sits_sync->log(1, 'The script ajaxhandling.php failed to instatiate module_cohort object - exception: ' . $e->getMessage());
+                    $this->sits_sync->log_report(1, 'sits_client_request failed to instatiate module_cohort object - exception: ' . $e->getMessage());
                     $this->response = ERROR_FAILED_TO_INSTANTIATE_COHORT;
                     return false;
                 }
@@ -171,7 +172,7 @@ EOXML;
                         $this->response = ERROR_COHORT_FAILED_SITS_VALIDATION;
                     }
                 }catch(InvalidArgumentException $e){
-                    $this->sits_sync->log(1, 'The script ajaxhandling.php failed to instatiate program_cohort object - exception: ' . $e->getMessage());
+                    $this->sits_sync->log_report(1, 'sits_client_request failed to instatiate program_cohort object - exception: ' . $e->getMessage());
                     $this->response = ERROR_FAILED_TO_INSTANTIATE_COHORT;
                     return false;
                 }
@@ -188,34 +189,41 @@ EOXML;
         }
 
         $default = false; //Never going to create default mappings through the GUI
-         
+        
+        if($cohort->type == 'module'){
+            $period = $this->sits_sync->get_period_for_code($cohort->period_code, $cohort->academic_year);
+        }else{
+            $period = $this->sits_sync->get_period_for_code('AY', $cohort->academic_year); //AY is the default period code to the academic year, programs run on academic years
+        }
+                         
         switch($this->xml->unenrol){
+
             case 'specified':
                 $manual = false;
-                $start_date = new DateTime();
+                $start_date = $period->start;
                 $end_date = new DateTime((string)$this->xml->end_date);
                 $specified = true;
                 break;
             case 'auto':
                 $manual = false;
-                if($cohort->type == 'module'){
-                    $period = $this->sits_sync->get_period_for_code($cohort->period_code, $cohort->academic_year);
-                }else{
-                    $period = $this->sits_sync->get_period_for_code('AY', $cohort->academic_year); //AY is the default period code to the academic year, programs run on academic years
-                }
                 $start_date = $period->start;
                 $end_date = $period->end;
                 $specified = false;
                 break;
             case 'manual':
                 $manual = true;
-                $start_date = new DateTime();
+                $start_date = $period->start;
                 $end_date = new DateTime('1970-01-01 00:00:00');
                 $specified = false;
         }
-
-        $mapping = new mapping($this->xml->course_id, $cohort, $start_date, $end_date, $manual, $default, $id = null, $specified);
-
+        
+        try{
+            $mapping = new mapping($this->xml->course_id, $cohort, $start_date, $end_date, $manual, $default, $id = null, $specified);
+        }catch(Exception $e){
+            $this->sits_sync->log_report(1, 'sits_client_request failed to instatiate mapping object - exception: ' . $e->getMessage());
+            $this->response = ERROR_FAILED_TO_INSTANTIATE_MAPPING;
+            return false;
+        }
         if($this->sits_sync->create_mapping($mapping)){
             $created_mapping = $this->sits_sync->read_mapping_for_course($mapping->cohort, $mapping->courseid);
             return $this->get_mapping_by_id($created_mapping->id);
@@ -287,8 +295,10 @@ EOXML;
     private function process_batch_element(&$mapping, &$mappingXML, &$returnXMLObj){
         foreach($mappingXML->children() as $tag => $value){
             if($tag == 'delete'){
-                $mapping->manual = true; //This is a bit of a hack to allow this->update_mappings_for_period to play safe with 
-                // reactivating sync/spec mappings in the knowledge that it wasn't a user who deactivated them
+                $mapping->manual = true; 
+                $mapping->specified = false;
+                //This is a bit of a hack to allow this->update_mappings_for_period to play safe with 
+                //reactivating sync/spec mappings in the knowledge that it wasn't a user who deactivated them
                 if($this->sits_sync->deactivate_mapping($mapping)){
                     $returnXMLObj->addChild('deleted', $mapping->id);
                 }else{
@@ -349,13 +359,14 @@ EOXML;
 EOXML;
 
         $returnXMLObj = new SimpleXMLElement($returnXML);
-        $bucs_id = (string)$this->xml->bucsid;
-        if(!ctype_alnum($bucs_id) || strlen($bucs_id) > 12){ //Bit of crude validation, weedles out any proper nastiness
+        $bucs_id = preg_replace('/[^a-zA-Z0-9-]/', '', (string)$this->xml->bucsid);  //Strip all characters except alphanumeric or '-' (for BUCS lite)
+        if(!preg_match('/[A-Za-z0-9]|[A-Za-z0-9]+[-]/', $bucs_id) || strlen($bucs_id) > 12){ //Bit of crude validation, weedles out any proper nastiness
             $returnXMLObj->addChild('message',  $bucs_id . ' is not in a valid BUCS id format.');
             $this->content_type = 'text/xml';
             $this->response = $returnXMLObj->asXML();
             return false;
         }
+        
         $user = get_record('user', 'username', $bucs_id);
          
         if(is_object($user)){
@@ -364,16 +375,19 @@ EOXML;
             $this->response = $returnXMLObj->asXML();
             return true;
         }
-         
-        $validate = $this->sits_sync->validate_bucs_id($bucs_id);
-        if(!is_object($validate)){
-            $returnXMLObj->addChild('message',  $bucs_id . ' is not a valid BUCS username. Please try again.');
-            $this->content_type = 'text/xml';
-            $this->response = $returnXMLObj->asXML();
-            return false;
+
+        if(!preg_match('/-/', $bucs_id)){ //And therefore not a BUCS Lite account
+            $validate = $this->sits_sync->validate_bucs_id($bucs_id);
+            if(!is_object($validate)){
+                $returnXMLObj->addChild('message',  $bucs_id . ' is not a valid BUCS username. Please try again.');
+                $this->content_type = 'text/xml';
+                $this->response = $returnXMLObj->asXML();
+                return false;
+            }
         }
          
         $user = $this->sits_sync->user_by_username($bucs_id);
+        
         if(is_object($user)){
             $returnXMLObj->addChild('message',  $user->username . ' has been successfully added as a Moodle user.');
             $this->content_type = 'text/xml';
@@ -428,7 +442,7 @@ EOXML;
             $mapping = $this->sits_sync->read_mapping_from_id($map_id);
             if(is_object($mapping)){
                 if(!$this->sits_sync->add_cohort_members_to_group($mapping->cohort, $group_id)){
-                    $this->response = FAILED_TO_ADD_TO_GROUP;
+                    $this->response = ERROR_FAILED_TO_ADD_TO_GROUP;
                 }
             }
         }
@@ -445,7 +459,7 @@ EOXML;
         $data->description = ''; //groups_create_groups wants one, we don't take one, currently.  Perhaps we should, as an option.
         $group_id = groups_create_group($data);
         if($group_id === false){
-            $this->response = FAILED_TO_CREATE_GROUP;
+            $this->response = ERROR_FAILED_TO_CREATE_GROUP;
         }else{
             $this->response = SUCCESS;
             $this->add_to_group($group_id);
@@ -640,12 +654,12 @@ EOXML;
             }
             $period_alteration = new period_alteration($code, $acyear, $start, $end, $revert, $id);
             if(!$this->sits_sync->alter_period($period_alteration)){
-                $this->response = FAILED_TO_UPDATE_PERIODS;
+                $this->response = ERROR_FAILED_TO_UPDATE_PERIODS;
             }           
         }
 
         if(!$this->sits_sync->update_all_mapping_periods()){
-            $this->response = FAILED_TO_UPDATE_PERIODS;
+            $this->response = ERROR_FAILED_TO_UPDATE_PERIODS;
         }
     }
     
@@ -653,7 +667,7 @@ EOXML;
         if(set_config('sits_sync_all', 0)){
             $this->response = SUCCESS;
         }else{
-            $this->response = FAILED_TO_RESET_SYNC_FLAG;
+            $this->response = ERROR_ERROR_FAILED_TO_RESET_SYNC_FLAG;
         }
     }
 }

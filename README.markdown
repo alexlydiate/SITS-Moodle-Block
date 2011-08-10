@@ -10,9 +10,7 @@
 
 ##Be Aware
 
-**The module is currently in a testing phase at the University of Bath** - we are due to go live in early August, in time for the new academic year.
-
-**The block only supports SITS on Oracle databases**.
+**Currently, the block only supports SITS on Oracle databases**.
 
 **The block requires PHP version 5.3**
 
@@ -28,8 +26,7 @@ the process should have little noticible effect on performance.  If you are usin
 period, or else simply sync each course individually.  On a wider note, you may wish to consider converting to InnoDB, which you may find
 improves the performance of Moodle generally.
 
-At the University of Bath we are running the Moodle database on InnoDB tables. A full sync of over 4000 active mappings is run every hour, 
-taking just under 10 minutes.  However, as the module only updates where necessary, running the same sync from a fresh install will 
+At the University of Bath we are running Moodle 5.5 on InnoDB tables. 
 take considerably longer as each mapping is processed for the first time.
 
 The block creates courses in Moodle for each and every active cohort in SITS - this is a requirement of the University of Bath, it may

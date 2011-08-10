@@ -19,7 +19,7 @@ sits_block.totalPeriods = 0;
 sits_block.periodAppendCount = 0;
 sits_block.newPeriodCount = 0;
 sits_block.periodValueHasChanged = [];
-sits_block.sUrl = '';
+sits_block.sUrl = location.protocol + '//' + location.hostname + '/blocks/sits/gui/client_async_request.php';
 
 sits_block.isEven = function (int) {
 	if (int % 2 === 0) {
@@ -84,8 +84,7 @@ sits_block.blurScreen = function (txt) {
 	waitDiv = document.createElement("div"),
 	loaderDiv = document.createElement("div"),
 	waitMessageDiv = document.createElement("div"),
-	bodyElement = YAHOO.util.Dom.get('canvas');
-	
+	bodyElement = YAHOO.util.Dom.get('container');	
 	blurDiv.id = "blurDiv";
 	blurDiv.style.cssText = "position:absolute; top:0; right:0; width:" + screen.width + "px; height:auto; background-color: #ffffff; opacity:0.5; filter:alpha(opacity=50)";
 	layerDiv.id = "layerDiv";
@@ -420,10 +419,14 @@ sits_block.get_days = function (date)
 
 sits_block.get_period_options = function () {
 	var html = '<option value="S1" selected="selected">S1</option>';
-	
 	html += '<option value="S2">S2</option>';
+	html += '<option value="S3">S3</option>';
+	html += '<option value="T1">T1</option>';
+	html += '<option value="T2">T2</option>';
+	html += '<option value="T3">T3</option>';
 	html += '<option value="AY">AY</option>';
 	html += '<option value="DIS">DIS</option>';
+	html += '<option value="MOD">MOD</option>';
 	html += '<option value="M01">M01</option>';
 	html += '<option value="M02">M02</option>';
 	html += '<option value="M03">M03</option>';
@@ -436,6 +439,7 @@ sits_block.get_period_options = function () {
 	html += '<option value="M10">M10</option>';
 	html += '<option value="M11">M11</option>';
 	html += '<option value="M12">M12</option>';
+	
 	return html;
 };
 
@@ -469,31 +473,31 @@ sits_block.get_unenrolment_types = function (mapping)
 	if (default_map === '1') {
 	switch(ui_map_type) {
 		case 'specified':
-			types_html = '<option value="automatic">Sync with SAMIS</option>' +
-			'<option value="specified" selected="selected">Specified Date</option>';
+			types_html = '<option value="automatic">Sync</option>' +
+			'<option value="specified" selected="selected">Specified</option>';
 		break;
 		//case 'automatic':
 		default:
-			types_html = '<option value="automatic" selected="selected">Sync with SAMIS</option>' +
-			'<option value="specified">Specified Date</option>';
+			types_html = '<option value="automatic" selected="selected">Sync</option>' +
+			'<option value="specified">Specified</option>';
 		break;
 		}
 	} else {
 	    switch(ui_map_type) {
 		case 'manual':
-			types_html = '<option value="automatic">Sync with SAMIS</option>' +
-			'<option value="specified">Specified Date</option>' +  
+			types_html = '<option value="automatic">Sync</option>' +
+			'<option value="specified">Specified</option>' +  
 			'<option value="manual" selected="selected">Manual</option>';
 		break;
 		case 'specified':
-			types_html = '<option value="automatic">Sync with SAMIS</option>' +
-			'<option value="specified" selected="selected">Specified Date</option>' +  
+			types_html = '<option value="automatic">Sync</option>' +
+			'<option value="specified" selected="selected">Specified</option>' +  
 			'<option value="manual">Manual</option>';
 		break;
 		//case 'automatic':
 		default:
-			types_html = '<option value="automatic" selected="selected">Sync with SAMIS</option>' +
-			'<option value="specified">Specified Date</option>' +  
+			types_html = '<option value="automatic" selected="selected">Sync</option>' +
+			'<option value="specified">Specified</option>' +  
 			'<option value="manual">Manual</option>';
 		break;
 	    }
@@ -743,6 +747,7 @@ sits_block.asyncRequest = function (op, xml) {
 					//sits_block.hideMappingsForCourse(courses[i].firstChild.data);
 					sits_block.disable_save(courses[i].firstChild.data);
 					sits_block.swapLoadMessageForControls(courses[i].firstChild.data, true);
+					sits_block.set_group_options();
 				}	
 			};
 		break;
@@ -762,7 +767,7 @@ sits_block.asyncRequest = function (op, xml) {
 				
 			};
 		break;	
-		case 'adduser':
+		case 'add_user':
 		case 'sync_all':
 			    responseSuccess = function (o) {
 				xmlDoc = sits_block.loadXMLString(o.responseText);
@@ -1078,7 +1083,7 @@ sits_block.view_groups_page = function () {
 sits_block.save_course_changes = function (courseid) {
 	var confirmed, xml;
 	
-	confirmed = confirm('Please confirm to save your changes to the mappings');
+	confirmed = confirm("Please click 'OK' to save your changes.\n\n(If you have removed a cohort mapping, the associated students will be removed at this point).");
 	if (confirmed)
 	{
 		xml = sits_block.create_batch_xml(courseid);
@@ -1408,10 +1413,8 @@ sits_block.add_user = function () {
 		xml += "<useradd>";
 		xml += "<bucsid>" + bucs_id + "</bucsid>";
 		xml += "</useradd>";
-
 		sits_block.blurScreen('Adding User - please wait');
-		sits_block.asyncRequest('adduser', xml);
-		
+		sits_block.asyncRequest('add_user', xml);		
 	} else {
 		alert('The username you have entered is not in a BUCS username format - please enter a valid BUCS username');
 	}
@@ -1694,12 +1697,10 @@ sits_block.reset_sync_flag = function (){
 };
 
 sits_block.admin_init = function () {
-	sits_block.sUrl = location.protocol + '//' + location.hostname + '/blocks/sits/gui/client_async_request.php';
 	sits_block.populate_period_codes();
 };
 
-sits_block.user_init = function () {
-	sits_block.sUrl = location.protocol + '//' + location.hostname + '/blocks/sits/gui/client_async_request.php';
+sits_block.user_init = function () {	
 	sits_block.overlay = new DialogOverlay($('pop-up-box').remove());
     $$('input.add').invoke('enable');
     sits_block.switch_view('cohort');

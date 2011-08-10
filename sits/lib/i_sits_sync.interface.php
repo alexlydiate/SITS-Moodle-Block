@@ -87,11 +87,18 @@ interface i_sits_sync {
      * to a date different from that defined in SITS
      * @param period_alteration object $period_alteration
      */
-    public function alter_period($period_alteration);    
+    public function alter_period(&$period_alteration);    
     
     /**
      * Updates all mappings period start and end dates
      * @return boolean
      */
     public function update_all_mapping_periods();
+    
+     /**
+     * Cycles through and validates all mappings - if they are invalid, that is to say if either the SITS cohort or Moodle course
+     * does not exist, the mapping will be deleted.
+     * @return boolean
+     */
+    public function remove_orphaned_mappings();
 }

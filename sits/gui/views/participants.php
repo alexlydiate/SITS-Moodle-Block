@@ -221,8 +221,8 @@ if (!isset($hiddenfields['mapped_cohort'])) {
 }
 
 if (!isset($hiddenfields['unenrol_type'])) {
-    $tablecolumns[] = 'unenrol_type';
-    $tableheaders[] = 'Unenrol Type';
+    $tablecolumns[] = 'unenrol_method';
+    $tableheaders[] = 'Unenrol Method';
 }
 
 if (!isset($hiddenfields['default_map'])) {
@@ -634,7 +634,7 @@ if ($fullmode) {    // Print simple listing
             $profilelink . $hidden);
 
             if (!isset($hiddenfields['mapped_cohort'])) {
-                if($user->enrol == 'manual'){
+                if($user->enrol == 'manual' || $user->enrol == 'metacourse' || $user->enrol == 'internal' || $user->enrol == 'database'){
                     $data[] = get_string('enrol_not_linked', 'block_sits');
                 }else{
                     if(is_null($user->period_code)){
@@ -650,7 +650,7 @@ if ($fullmode) {    // Print simple listing
                 }
             }
             if (!isset($hiddenfields['unenrol_type'])) {
-                if($user->enrol == 'manual'){
+                if($user->enrol == 'manual' || $user->enrol == 'metacourse' || $user->enrol == 'internal' || $user->enrol == 'database'){
                     $data[] = 'N/A';
                 }elseif($user->specified){
                     $data[] = 'Specified';
@@ -661,7 +661,7 @@ if ($fullmode) {    // Print simple listing
                 }
             }
             if (!isset($hiddenfields['default_map'])) {
-                if($user->enrol == 'manual'){
+                if($user->enrol == 'manual' || $user->enrol == 'metacourse' || $user->enrol == 'internal' || $user->enrol == 'database'){
                     $data[] = 'N/A';
                 }elseif($user->default_map){
                     $data[] = 'Yes';

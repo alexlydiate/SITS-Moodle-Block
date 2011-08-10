@@ -18,6 +18,10 @@ $options = array('Off', 'Daily', 'Continuous');
 $settings->add(new admin_setting_configselect('sits_cron_select', get_string('sits_cron_label', 'block_sits'),
 get_string('config_select_desc', 'block_sits'), 1, $options));
 
+$options = array('Off', 'On');
+$settings->add(new admin_setting_configselect('sits_remove_orphans', get_string('sits_orphan_label', 'block_sits'),
+get_string('sits_orphan_desc', 'block_sits'), 1, $options));
+
 $options = array();
 for ($i=0; $i<24; $i++) {
     $options[$i] = $i;

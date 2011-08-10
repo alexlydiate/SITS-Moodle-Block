@@ -43,8 +43,11 @@ if(has_capability('moodle/course:manageactivities', $context))
 
     foreach($user_courses as $cur_course)
     {
-        if($cur_course->idnumber != 'AD_Staff_area_new'){ //Which is the only thing the vast swathe of code incurred by get_prohibited_courses returns
-            $course_is_tutor_on[] = $cur_course;
+        $context = get_context_instance(CONTEXT_COURSE, $cur_course->id);
+        if(has_capability('moodle/course:manageactivities', $context)){
+            if($cur_course->idnumber != 'AD_Staff_area_new'){ //Which is the only thing the vast swathe of code incurred by get_prohibited_courses returns
+                    $course_is_tutor_on[] = $cur_course;
+            }
         }
     }
 

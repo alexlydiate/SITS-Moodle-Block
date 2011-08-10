@@ -182,7 +182,6 @@ abstract class sits_db implements i_sits_db {
         return $this->current_period_codes_stm;
     }
 
-
     //End on implementation of i_sits_sync
     //Other services
 
@@ -228,9 +227,13 @@ abstract class sits_db implements i_sits_db {
         $this->mab_seq = $cohort->mab_seq;
         return (oci_execute($this->insert_agreed_grade_stm)
         && oci_execute($this->insert_agreed_grade_smr_stm)
-        && oci_execute($this->insert_agreed_grade_smrt_stm));
+        //&& oci_execute($this->insert_agreed_grade_smrt_stm)
+        );
     }
-
+/*
+ * NB update now INSERTS to SMR_T as sas1b does not populate it automatically
+ * therefore the conditionally called INSERT function above will not need
+ */
     public function update_agreed_grade( &$student,&$grade,&$cohort ){
 
         $this->spr_code = $this->get_spr_from_bucs_id($student->username,$cohort)->SPR_CODE;
@@ -239,12 +242,15 @@ abstract class sits_db implements i_sits_db {
         $this->academic_year = $cohort->academic_year;
         $this->sas_agrg = $grade->sas_agrg;
         $this->smr_agrd = $grade->smr_agrd;
+        $this->mav_occur = $cohort->mav_occur;
+        $this->map_code = $cohort->map_code;
+        $this->mab_seq = $cohort->mab_seq;
         oci_execute($this->update_agreed_grade_stm);
         oci_execute($this->update_agreed_grade_smr_stm);
-        oci_execute($this->update_agreed_grade_smrt_stm);;
+        oci_execute($this->insert_agreed_grade_smrt_stm);
         return (oci_num_rows($this->update_agreed_grade_stm)
         && oci_num_rows($this->update_agreed_grade_smr_stm)
-        && oci_num_rows($this->update_agreed_grade_smrt_stm));
+        && oci_num_rows($this->insert_agreed_grade_smrt_stm));
     }
 
     //Protected functions

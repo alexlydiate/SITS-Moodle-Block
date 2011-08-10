@@ -348,7 +348,7 @@ sql;
             $this->report->log_report(2, 'sset_mod_cohort_stm() failed to parse query');
             return false;
         }elseif(!oci_bind_by_name($this->mod_cohort_stm, ':modcode', $this->sits_code, 16, SQLT_CHR)){
-            $this->report->log_report(2, 'Failed to bind :progcode in set_mod_cohort_query');
+            $this->report->log_report(2, 'Failed to bind :modcode in set_mod_cohort_query');
             return false;
         }elseif(!oci_bind_by_name($this->mod_cohort_stm, ':acyear', $this->academic_year, 8, SQLT_CHR)){
             $this->report->log_report(2, 'Failed to bind :acyear in set_mod_cohort_query');
@@ -697,14 +697,13 @@ sql;
         //Use sprintf() to add in the appropriate extra conditions for :acyear, :modcode and :periodcode
         $this->sql_mod_students = <<<sql
 SELECT stu.stu_udf1 "username", smo.mod_code "sits_code", smo.psl_code "period_code", dpt.dpt_code "dep_code", 1 "role"
-FROM ins_stu stu,
-cam_smo smo,
-ins_mod mod,
-ins_dpt dpt
+FROM ins_stu stu, cam_smo smo, ins_mod mod, ins_dpt dpt, srs_scj scj
 where stu.stu_code=substr(smo.spr_code,1,9)
 AND smo.mod_code=mod.mod_code
 AND mod.DPT_CODE=dpt.DPT_CODE
+AND stu.stu_code=scj.scj_stuc 
 AND SUBSTR(mod.mod_code,1,2) != 'ZZ'
+AND scj.scj_stac NOT IN ('G', 'DE', 'L', 'NS', 'T')
 sql;
         //this to give a conditions placeholder; because EOT parses $variables, so you can't stick it straight in
         $this->sql_mod_students .= ' %1$s';
