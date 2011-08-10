@@ -10,7 +10,7 @@
 
 ##Be Aware
 
-**Currently, the block only supports SITS on Oracle databases**.
+**Currently the block only supports SITS on Oracle databases**.
 
 **The block requires PHP version 5.3**
 
@@ -25,9 +25,6 @@ locking entire tables each time it is queried.   If you are using MySQL with Inn
 the process should have little noticible effect on performance.  If you are using MyISAM engines you may wish to schedule Full Syncs in a quiet
 period, or else simply sync each course individually.  On a wider note, you may wish to consider converting to InnoDB, which you may find
 improves the performance of Moodle generally.
-
-At the University of Bath we are running Moodle 5.5 on InnoDB tables. 
-take considerably longer as each mapping is processed for the first time.
 
 The block creates courses in Moodle for each and every active cohort in SITS - this is a requirement of the University of Bath, it may
 not be desirable in every institution.  It would be a simple code change to change this behaviour, and should there be demand we may
